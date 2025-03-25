@@ -1561,7 +1561,6 @@ static int ddk770_dp_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], i
 	}
 
 	if (!DP_HPD_Detect(index)) {
-		pr_err("DP[%d] Detect failed\n", index);
 		ret = -ENODEV;
 		goto end;
 	}

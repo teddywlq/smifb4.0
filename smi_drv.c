@@ -72,6 +72,7 @@ int lcd_scale = 0;
 int pwm_ctrl = 0;
 int clk_phase = -1;
 int use_vblank = 0;
+int use_doublebuffer = 0;
 
 module_param(smi_pat, int, S_IWUSR | S_IRUSR);
 
@@ -106,7 +107,8 @@ MODULE_PARM_DESC(clkphase, "Panel Mode Clock phase, -1 = Use Mode table (Default
 module_param_named(clkphase, clk_phase, int, 0400);
 MODULE_PARM_DESC(vblank, "Disable/Enable hw vblank support");
 module_param_named(vblank, use_vblank, int, 0400);
-
+MODULE_PARM_DESC(doublebuffer, "Disable/Enable double buffer");
+module_param_named(doublebuffer, use_doublebuffer, int, 0400);
 
 /*
  * This is the generic driver code. This binds the driver to the drm core,
@@ -805,7 +807,7 @@ static struct drm_driver driver = {
 	.major = DRIVER_MAJOR,
 	.minor = DRIVER_MINOR,
 	.patchlevel = DRIVER_PATCHLEVEL,
-#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
+#if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 11, 0)
 	.gem_create_object = drm_gem_shmem_create_object_cached,
 #endif
 	.dumb_create		  = smi_dumb_create_align,

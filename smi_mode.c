@@ -951,7 +951,7 @@ static struct drm_encoder *smi_encoder_init(struct drm_device *dev, int index)
 			printk(KERN_ERR "Wrong connector index\n");
 	}
 	} else if(sdev->specId == SPC_SM770){
-		encoder->possible_crtcs = 0x7; //three CRTC
+		
 	//	drm_encoder_init(dev, encoder, &smi_encoder_encoder_funcs, DRM_MODE_ENCODER_TMDS, NULL);
 		switch (index)
 		{
@@ -959,8 +959,14 @@ static struct drm_encoder *smi_encoder_init(struct drm_device *dev, int index)
 				//DP
 				drm_encoder_init(dev, encoder, &smi_encoder_encoder_funcs, DRM_MODE_ENCODER_DPMST, NULL);
 				break;
-			case 2: case 3: case 4:
+			case 2: case 3:
 				//HDMI
+				encoder->possible_crtcs = (index - 1);
+				drm_encoder_init(dev, encoder, &smi_encoder_encoder_funcs, DRM_MODE_ENCODER_TMDS, NULL);
+				break;
+			case 4:
+				//HDMI
+				encoder->possible_crtcs = 0x4;
 				drm_encoder_init(dev, encoder, &smi_encoder_encoder_funcs, DRM_MODE_ENCODER_TMDS, NULL);
 				break;
 			default:

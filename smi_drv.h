@@ -77,9 +77,9 @@
 #define MAX_ENCODER_770 5
 #define MAX_ENCODER(g_specId) (g_specId == SPC_SM750)? MAX_ENCODER_750: (g_specId == SPC_SM768)? MAX_ENCODER_768:MAX_ENCODER_770
 
-#define SM770_MAX_MODE_SIZE (48<<20)
-#define SM768_MAX_MODE_SIZE (32<<20)
-#define SM750_MAX_MODE_SIZE (8<<20)
+#define SM770_MAX_MODE_SIZE (80<<20)
+#define SM768_MAX_MODE_SIZE (80<<20)
+#define SM750_MAX_MODE_SIZE (16<<20)
 #define smi_DPMS_CLEARED (-1)
 
 extern int g_specId;
@@ -96,6 +96,7 @@ extern int edid_mode;
 extern int lcd_scale;
 extern int pwm_ctrl;
 extern int use_vblank;
+extern int use_doublebuffer;
 
 struct smi_750_register;
 struct smi_768_register;
@@ -109,6 +110,9 @@ struct smi_plane {
 	void __iomem *vaddr_base;
 	u32 vram_size;
 	unsigned long size;
+	void __iomem *vaddr_front;
+	void __iomem *vaddr_back;
+	unsigned int current_buffer;  // 0 for front, 1 for back
 };
 
 static inline struct smi_plane *to_smi_plane(struct drm_plane *plane)
