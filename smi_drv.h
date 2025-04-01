@@ -113,6 +113,7 @@ struct smi_plane {
 	void __iomem *vaddr_front;
 	void __iomem *vaddr_back;
 	unsigned int current_buffer;  // 0 for front, 1 for back
+	int align;
 };
 
 static inline struct smi_plane *to_smi_plane(struct drm_plane *plane)

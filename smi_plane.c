@@ -268,7 +268,7 @@ static void smi_handle_damage(struct smi_plane *smi_plane,
 {
 	void *back_buffer;
 	if(use_doublebuffer)
-		back_buffer = (smi_plane->current_buffer == 1) ? smi_plane->vaddr_back : smi_plane->vaddr_front;
+		back_buffer = ((smi_plane->current_buffer == 1) ? smi_plane->vaddr_back : smi_plane->vaddr_front) + smi_plane->align;
 	else
 		back_buffer = smi_plane->vaddr;
 
@@ -343,11 +343,10 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 	struct smi_plane *smi_plane = to_smi_plane(plane);
 	struct drm_rect damage;
 	int dst_off, offset, x, y;
-	void *back_buffer;
 	unsigned int buffer_size =0;
 	int i, ctrl_index = 0, max_enc = 0;
 	disp_control_t disp_ctrl;
-	struct smi_device *sdev = plane->dev->dev_private;
+	struct smi_device *sdev = plane->dev->dev_private;	
 
 	if (!plane_state->crtc || !plane_state->fb)
 		return;
@@ -395,6 +394,11 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 		dst_off = SM770_MAX_MODE_SIZE<<1;         //the third DC is at offset 64MB
 	}
 
+	if (sdev->specId == SPC_SM770 && (x % 0x100))
+		smi_plane->align = alignLineOffset(x * fb->format->cpp[0]) - x * fb->format->cpp[0];
+	else 
+		smi_plane->align = 0;
+	
 	if (use_doublebuffer)
 	{
 
@@ -405,11 +409,9 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 		else if (sdev->specId == SPC_SM770)
 			buffer_size = SM770_MAX_MODE_SIZE / 2;
 
-		back_buffer = (smi_plane->current_buffer == 1) ? smi_plane->vaddr_back : smi_plane->vaddr_front;
-		smi_plane->vaddr_base = back_buffer;
 	}
 	else
-		smi_plane->vaddr = (smi_plane->vaddr_base + dst_off);
+		smi_plane->vaddr = (smi_plane->vaddr_base + dst_off + smi_plane->align);
 	//printk("smi_primary_plane_atomic_update(): disp_ctrl %d,  vram_size %x, dst_off %x  pitch %d\n", disp_ctrl,  smi_plane->vram_size, dst_off,fb->pitches[0]);
 
 	drm_atomic_helper_damage_iter_init(&iter, old_plane_state, plane_state);
@@ -428,10 +430,11 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 	y = (plane_state->src_y >> 16);
 
 	if (use_doublebuffer)
-		offset = dst_off +smi_plane->current_buffer * buffer_size+ y * fb->pitches[0] + x * fb->format->cpp[0];
+		offset = dst_off +smi_plane->current_buffer * buffer_size+ y * fb->pitches[0] + x * fb->format->cpp[0] + smi_plane->align;
 	else
-		offset = dst_off + y * fb->pitches[0] + x * fb->format->cpp[0];
-	
+		offset = dst_off + y * fb->pitches[0] + x * fb->format->cpp[0] + smi_plane->align;
+
+	//printk("DC%d set_base: offset %x, distoffset %x, pitch %d, x %d, y %d\n", disp_ctrl,offset,dst_off, fb->pitches[0], x, y);
 	if (sdev->specId == SPC_SM750) {
 		hw750_set_base(disp_ctrl, fb->pitches[0], offset);
 	} else if (sdev->specId == SPC_SM768) {
