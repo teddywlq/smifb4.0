@@ -8,7 +8,7 @@
 
 /* Size of SM768 MMIO and memory */
 #define SMI_MMIO_SIZE_SM768       (2<<20)    /* 2M of MMIO space */
-#define SMI_MEMORY_SIZE_SM768     (128<<20)  
+#define SMI_MEMORY_SIZE_SM768     (256<<20)  
 
 
 unsigned int ddk768_getCrystalType(void)
