@@ -179,5 +179,6 @@ void hw770_hdmi_interrupt_enable(hdmi_index index,int enable);
 
 void  hw770_get_current_fb_info(hdmi_index index, struct smi_770_fb_info *fb_info);
 void hw770_set_current_pitch(hdmi_index index, struct smi_770_fb_info *fb_info);
+void hw770_i2c_reset_busclear(hdmi_index index);
 
 #endif

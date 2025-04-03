@@ -607,3 +607,9 @@ void hw770_set_current_pitch(hdmi_index index, struct smi_770_fb_info *fb_info)
 	baseAddr = FB_WIDTH + (index > 1 ? CHANNEL_OFFSET2 : index * CHANNEL_OFFSET);
 	pokeRegisterDWord(baseAddr, fb_info->fb_pitch);
 }
+
+void hw770_i2c_reset_busclear(hdmi_index index)
+{
+	ddk770_i2c_reset_busclear(index);
+
+}

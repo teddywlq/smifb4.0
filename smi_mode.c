@@ -985,7 +985,7 @@ static int smi_connector_get_modes(struct drm_connector *connector)
 	int ret __attribute__((unused))= 0;
 	void *edid_buf __attribute__((unused)) = NULL;
 	int count = 0;
-
+	unsigned int retry = 3;
 	struct smi_device *sdev = connector->dev->dev_private;
 	struct smi_connector *smi_connector = to_smi_connector(connector);
 
@@ -1207,8 +1207,16 @@ static int smi_connector_get_modes(struct drm_connector *connector)
 		if(connector->connector_type == DRM_MODE_CONNECTOR_HDMIA)
 		{
 #if USE_I2C_ADAPTER
+read_again0:
 			sdev->hdmi0_edid = drm_get_edid(
 				connector, &smi_connector->adapter);
+			if((sdev->m_connector & USE_HDMI0) && !sdev->hdmi0_edid && retry)
+			{
+				retry--;
+				printk("hdmi 0 iic resrt\n\n");
+				hw770_i2c_reset_busclear(INDEX_HDMI0);
+				goto read_again0;
+			}
 			if (sdev->hdmi0_edid)
 #else
 			ret = hw770_get_hdmi_edid(
@@ -1235,8 +1243,16 @@ static int smi_connector_get_modes(struct drm_connector *connector)
 		if(connector->connector_type == DRM_MODE_CONNECTOR_HDMIB)
 		{
 #if USE_I2C_ADAPTER
+read_again1:
 			sdev->hdmi1_edid = drm_get_edid(
 				connector, &smi_connector->adapter);
+			if((sdev->m_connector & USE_HDMI1) && !sdev->hdmi1_edid && retry)
+			{
+				retry--;
+				printk("hdmi 1 iic resrt\n\n");
+				hw770_i2c_reset_busclear(INDEX_HDMI1);
+				goto read_again1;
+			}
 			if (sdev->hdmi1_edid)
 #else
 			ret = hw770_get_hdmi_edid(
@@ -1263,8 +1279,16 @@ static int smi_connector_get_modes(struct drm_connector *connector)
 		if(connector->connector_type == DRM_MODE_CONNECTOR_DVID)
 		{
 #if USE_I2C_ADAPTER
+read_again2:
 			sdev->hdmi2_edid = drm_get_edid(
 				connector, &smi_connector->adapter);
+			if ((sdev->m_connector & USE_HDMI2) && !sdev->hdmi2_edid && retry)
+			{
+				retry--;
+				printk("hdmi 2 iic resrt\n\n");
+				hw770_i2c_reset_busclear(INDEX_HDMI2);
+				goto read_again2;
+			}
 			if (sdev->hdmi2_edid)
 #else
 			ret = hw770_get_hdmi_edid(
