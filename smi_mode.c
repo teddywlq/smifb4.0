@@ -873,11 +873,11 @@ static void smi_encoder_dpms(struct drm_encoder *encoder, int mode)
 		index = smi_encoder_crtc_index_changed(index);
 
 		if (mode == DRM_MODE_DPMS_OFF){
-			printk("770 dpms off\n");
+			dbg_msg("DC %d 770 dpms off\n", index);
 			ddk770_setDisplayDPMS(index, DISP_DPMS_OFF);
 			ddk770_swPanelPowerSequence(index, 0, index, 4);  
 		}else{
-			printk("770 dpms on\n");
+			dbg_msg("DC %d 770 dpms on\n", index);
 			ddk770_setDisplayDPMS(index, DISP_DPMS_ON);
 			ddk770_swPanelPowerSequence(index, 1, index, 4);
 		}
@@ -1356,14 +1356,13 @@ static enum drm_mode_status smi_connector_mode_valid(struct drm_connector *conne
 	}
 
 	}else{
-			if(mode->clock >= 600000)
-				return MODE_NOCLOCK;
-
+			if((mode->hdisplay > 3840) || (mode->vdisplay > 2160) || (mode->clock > 600000))
+				return MODE_NOMODE;
 			if(mode->clock >=300000 && (count_set_bits(sdev->m_connector) > 2))  //SM770 can't support triple 4k@60hz
 				return MODE_NOCLOCK;
-
-			// if((sdev->vram_size == MB(256)) &&  (mode->clock >= 200000))
-			// 	return MODE_NOMODE;
+			//For Xorg, if sram is 256Mb, can not support triple 4k@30hz
+			if((sdev->vram_size == MB(256)) &&  (mode->clock >= 250000) && (count_set_bits(sdev->m_connector) > 2) && (connector->connector_type == DRM_MODE_CONNECTOR_DVID))
+				return MODE_NOMODE;
 	}
 		
 

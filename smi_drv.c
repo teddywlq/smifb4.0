@@ -121,6 +121,7 @@ module_param_named(doublebuffer, use_doublebuffer, int, 0400);
 #define PCI_DEVID_SM770 0x0770
 
 static struct drm_driver driver;
+unsigned int sm770_max_mode_size = (80<<20);  //if sram size is 256M, then max mode size is 80M. otherwise 160M
 
 /* only bind to the smi chip in qemu */
 static const struct pci_device_id pciidlist[] = {

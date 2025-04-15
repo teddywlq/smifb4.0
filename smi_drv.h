@@ -30,11 +30,11 @@
 
 #define DRIVER_NAME		"smifb"
 #define DRIVER_DESC		"SiliconMotion GPU DRM Driver"
-#define DRIVER_DATE		"20250401"
+#define DRIVER_DATE		"20250408"
 
 #define DRIVER_MAJOR		4
 #define DRIVER_MINOR		2
-#define DRIVER_PATCHLEVEL	0
+#define DRIVER_PATCHLEVEL	1
 
 #define SMIFB_CONN_LIMIT 3
 
@@ -44,7 +44,7 @@
 #define SUPPORT_CHIP " SM750, SM768, SM770"
 
 
-#define _version_	"4.2.0.0"
+#define _version_	"4.2.1.0"
 
 #undef  NO_WC
 
@@ -77,11 +77,12 @@
 #define MAX_ENCODER_770 5
 #define MAX_ENCODER(g_specId) (g_specId == SPC_SM750)? MAX_ENCODER_750: (g_specId == SPC_SM768)? MAX_ENCODER_768:MAX_ENCODER_770
 
-#define SM770_MAX_MODE_SIZE (80<<20)
+
 #define SM768_MAX_MODE_SIZE (80<<20)
 #define SM750_MAX_MODE_SIZE (16<<20)
 #define smi_DPMS_CLEARED (-1)
 
+extern unsigned int sm770_max_mode_size;
 extern int g_specId;
 extern int smi_pat;
 extern int smi_bpp;

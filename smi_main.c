@@ -263,8 +263,12 @@ static int smi_vram_init(struct smi_device *cdev)
 		cdev->vram_size = ddk750_getFrameBufSize();
 	else if(cdev->specId == SPC_SM768)
 		cdev->vram_size = ddk768_getFrameBufSize();
-	else if(cdev->specId == SPC_SM770)
-		cdev->vram_size = ddk770_getFrameBufSize();  
+	else if (cdev->specId == SPC_SM770)
+	{
+		cdev->vram_size = ddk770_getFrameBufSize();
+		if (cdev->vram_size > (256 << 20))
+			sm770_max_mode_size *= 2;
+	}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 16, 0)
 	/* Don't fail on errors, but performance might be reduced. */

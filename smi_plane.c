@@ -83,6 +83,14 @@ static int smi_cursor_atomic_check(struct drm_plane *plane,
 	return 0;
 }
 
+static void smi_cursor_add_zero_padding(void __iomem * addr, unsigned int size)
+{
+	unsigned int i;
+	for (i = 0; i < size; i += 4)
+	{
+		iowrite32(0,(void __iomem *) (addr + i));
+	}
+}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
 static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_atomic_state *state)
@@ -153,7 +161,7 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	else if (sdev->specId == SPC_SM768)
 		dst_off = (SM768_MAX_MODE_SIZE * (disp_ctrl + 1)) - (4 * CURSOR_WIDTH * CURSOR_HEIGHT);
 	else if (sdev->specId == SPC_SM770)
-		dst_off = (SM770_MAX_MODE_SIZE * (disp_ctrl + 1)) - (4 * CURSOR_WIDTH * CURSOR_HEIGHT);
+		dst_off = (sdev->vram_size - ((disp_ctrl + 1) * (2 << 20)));
 	dst = (smi_plane->vaddr_base + dst_off);
 	//printk("smi_cursor_atomic_update() disp_ctrl %d, fb->width %d, fb->height %d cpp %d\n", disp_ctrl, fb->width, fb->height, fb->format->cpp[0]);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0) && LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
@@ -171,6 +179,7 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 					  BPP32_BLUE);
 			ddk768_enableCursor(disp_ctrl, 3);
 		} else if (sdev->specId == SPC_SM770) {
+			smi_cursor_add_zero_padding((void __iomem *)(dst + (4 * CURSOR_WIDTH * CURSOR_HEIGHT)), (4 * CURSOR_WIDTH * 4));
 			ddk770_initCursor(disp_ctrl, (u32)dst_off, BPP32_BLACK, BPP32_WHITE,
 			 		  BPP32_BLUE);
 			ddk770_enableCursor(disp_ctrl, 3);
@@ -387,11 +396,11 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 		else if (sdev->specId == SPC_SM750) 
 				dst_off = SM750_MAX_MODE_SIZE; //the second DC is at offset 8MB	
 		else if (sdev->specId == SPC_SM770) 
-				dst_off = SM770_MAX_MODE_SIZE; 
+				dst_off = sm770_max_mode_size; 
 	}if(disp_ctrl == 2)
 	{
 		if (sdev->specId == SPC_SM770) 
-		dst_off = SM770_MAX_MODE_SIZE<<1;         //the third DC is at offset 64MB
+		dst_off = sm770_max_mode_size<<1;         //the third DC is at offset 64MB
 	}
 
 	if (sdev->specId == SPC_SM770 && (x % 0x100))
@@ -407,7 +416,7 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 		else if (sdev->specId == SPC_SM750)
 			buffer_size = SM750_MAX_MODE_SIZE / 2; // the second DC is at offset 8MB
 		else if (sdev->specId == SPC_SM770)
-			buffer_size = SM770_MAX_MODE_SIZE / 2;
+			buffer_size = sm770_max_mode_size / 2;
 
 	}
 	else
@@ -561,8 +570,8 @@ struct drm_plane *smi_plane_init(struct smi_device *cdev, unsigned int possible_
 			buffer_offset = (possible_crtcs / 2) * SM768_MAX_MODE_SIZE;
 			buffer_size = SM768_MAX_MODE_SIZE / 2;
 		}else if (cdev->specId == SPC_SM770){
-			buffer_offset = (possible_crtcs / 2) * SM770_MAX_MODE_SIZE;
-			buffer_size = SM770_MAX_MODE_SIZE / 2;
+			buffer_offset = (possible_crtcs / 2) * sm770_max_mode_size;
+			buffer_size = sm770_max_mode_size / 2;
 		}
 		smi_plane->vaddr_front = cdev->vram + buffer_offset;
 		smi_plane->vaddr_back = smi_plane->vaddr_front + buffer_size;
