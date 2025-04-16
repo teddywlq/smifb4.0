@@ -166,8 +166,10 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	//printk("smi_cursor_atomic_update() disp_ctrl %d, fb->width %d, fb->height %d cpp %d\n", disp_ctrl, fb->width, fb->height, fb->format->cpp[0]);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0) && LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
 	memcpy_toio(dst, map.vaddr, fb->width * fb->height * fb->format->cpp[0]);
+	drm_gem_shmem_vunmap(fb->obj[0],&map);
 #else
 	memcpy_toio(dst, src, fb->width * fb->height * fb->format->cpp[0]);
+	drm_gem_shmem_vunmap(fb->obj[0],src);
 #endif
 	if (sdev->specId == SPC_SM750) {
 			ddk750_initCursor(disp_ctrl, (u32)dst_off, BPP16_BLACK,

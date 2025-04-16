@@ -8,6 +8,7 @@
 #include <linux/vmalloc.h>
 #include <linux/debugfs.h>
 #include <drm/drm_debugfs.h>
+#include <linux/uaccess.h>
 #include "smi_debugfs.h"
 
 extern int pwm_ctrl;
