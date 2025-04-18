@@ -164,7 +164,12 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 		dst_off = (sdev->vram_size - ((disp_ctrl + 1) * (2 << 20)));
 	dst = (smi_plane->vaddr_base + dst_off);
 	//printk("smi_cursor_atomic_update() disp_ctrl %d, fb->width %d, fb->height %d cpp %d\n", disp_ctrl, fb->width, fb->height, fb->format->cpp[0]);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0) && LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	memcpy_toio(dst, src, fb->width * fb->height * fb->format->cpp[0]);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,0)
+	memcpy_toio(dst, map.vaddr, fb->width * fb->height * fb->format->cpp[0]);
+	drm_gem_shmem_vunmap(shem,&map);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
 	memcpy_toio(dst, map.vaddr, fb->width * fb->height * fb->format->cpp[0]);
 	drm_gem_shmem_vunmap(fb->obj[0],&map);
 #else

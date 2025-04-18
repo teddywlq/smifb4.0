@@ -618,7 +618,7 @@ irqreturn_t smi_hdmi0_pnp_handler(int irq, void *dev_id)
 			printk("HDMI Mode not supported!\n");
 			goto error;
 		}
-		hw770_set_current_pitch(INDEX_HDMI0,&fb_info);
+		hw770_set_current_pitch((disp_control_t)INDEX_HDMI0,&fb_info);
 	}
 	return IRQ_HANDLED;
 error:
@@ -682,7 +682,7 @@ irqreturn_t smi_hdmi1_pnp_handler(int irq, void *dev_id)
 			printk("HDMI Mode not supported!\n");
 			goto error;
 		}
-		hw770_set_current_pitch(INDEX_HDMI1,&fb_info);
+		hw770_set_current_pitch((disp_control_t)INDEX_HDMI1,&fb_info);
 	}
 	return IRQ_HANDLED;
 error:
@@ -746,7 +746,7 @@ irqreturn_t smi_hdmi2_pnp_handler(int irq, void *dev_id)
 			printk("HDMI Mode not supported!\n");
 			goto error;
 		}
-		hw770_set_current_pitch(INDEX_HDMI2,&fb_info);
+		hw770_set_current_pitch((disp_control_t)INDEX_HDMI2,&fb_info);
 	}
 	return IRQ_HANDLED;
 error:
@@ -760,8 +760,9 @@ static int smi_dumb_create_align(struct drm_file *file, struct drm_device *dev,
 			     struct drm_mode_create_dumb *args)
 {
 	struct smi_device *sdev = dev->dev_private;
-	if(sdev->specId == SPC_SM770)
+	if(sdev->specId == SPC_SM770){
 		args->width = alignLineOffset(args->width * args->bpp / 8) / (args->bpp / 8);
+	}
 	else
 		args->width = ALIGN (args->width , 8);	
 	return drm_gem_shmem_dumb_create(file, dev,  args);

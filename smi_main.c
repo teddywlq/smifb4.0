@@ -149,7 +149,7 @@ int smi_driver_load(struct drm_device *dev, unsigned long flags)
 		DRM_ERROR("Fatal error during modeset init: %d\n", r);
 		goto out;
 	}
-
+#ifdef ENABLE_HDMI_IRQ
 	if (cdev->specId == SPC_SM770)
 	{
 
@@ -171,7 +171,7 @@ int smi_driver_load(struct drm_device *dev, unsigned long flags)
 		if (r)
 			printk("install irq failed , ret = %d\n", r);
 	}
-
+#endif
 	cdev->regsave = kvmalloc(1024,GFP_KERNEL);
 	if (!cdev->regsave) {
 		DRM_ERROR("cannot allocate regsave\n");

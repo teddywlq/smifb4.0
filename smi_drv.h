@@ -62,6 +62,12 @@
 #define UNUSED(x) x
 #endif
 
+#ifndef CONFIG_LOONGARCH
+#define ENABLE_HDMI_IRQ 
+#else
+#undef  ENABLE_HDMI_IRQ
+#endif
+
 #define USE_I2C_ADAPTER 1
 
 #define SMI_MAX_FB_HEIGHT 8192

@@ -221,6 +221,66 @@ static int smi_crtc_set_gamma(struct drm_crtc *crtc, const struct drm_format_inf
 	return 0;
 }
 
+
+static void smi_dp_set_mode(struct smi_device *sdev, dp_index index)
+{
+	struct drm_display_mode *mode;
+
+	struct drm_device *dev;
+	logicalMode_t logicalMode;
+	unsigned long refresh_rate;
+	struct drm_crtc *crtc;
+	struct smi_770_fb_info fb_info = {0};
+
+	int ret = 0;
+
+	dev = sdev->dev;
+
+	crtc = sdev->smi_enc_tab[index]->crtc;
+	if (crtc) {
+		printk("CRTC%d found: %p\n", index,crtc);
+	} else {
+		printk("CRTC%d not found\n",index);
+		return;
+	}
+
+	mode = &crtc->state->adjusted_mode;
+
+	if(!mode)
+		return;
+
+	refresh_rate = drm_mode_vrefresh(mode);
+	hw770_get_current_fb_info((disp_control_t)index,&fb_info);
+
+	logicalMode.valid_edid = false;
+
+	if(index == INDEX_DP0){
+		if (sdev->dp0_edid && drm_edid_header_is_valid((u8 *)sdev->dp0_edid) == 8)
+			logicalMode.valid_edid = true;
+	}else if(index == INDEX_DP1){
+		if (sdev->dp1_edid && drm_edid_header_is_valid((u8 *)sdev->dp1_edid) == 8)
+			logicalMode.valid_edid = true;
+	}
+	logicalMode.x = mode->hdisplay;
+	logicalMode.y = mode->vdisplay;
+	logicalMode.bpp = smi_bpp;
+	logicalMode.hz = refresh_rate;
+	logicalMode.pitch = 0;
+	logicalMode.dispCtrl = (disp_control_t)index;
+
+
+	hw770_setMode(&logicalMode, *mode);
+	printk("Starting init SM770 DP %d! Use Channel [%d]\n", index,index);
+
+	ret = hw770_set_dp_mode(&logicalMode, *mode, index);
+
+	if (ret != 0)
+	{
+		printk("DP Mode not supported!\n");
+		return;
+	}
+	hw770_set_current_pitch((disp_control_t)index,&fb_info);
+}
 /*
  * The DRM core requires DPMS functions, but they make little sense in our
  * case and so are just stubs
@@ -1361,7 +1421,7 @@ static enum drm_mode_status smi_connector_mode_valid(struct drm_connector *conne
 			if(mode->clock >=300000 && (count_set_bits(sdev->m_connector) > 2))  //SM770 can't support triple 4k@60hz
 				return MODE_NOCLOCK;
 			//For Xorg, if sram is 256Mb, can not support triple 4k@30hz
-			if((sdev->vram_size == MB(256)) &&  (mode->clock >= 250000) && (count_set_bits(sdev->m_connector) > 2) && (connector->connector_type == DRM_MODE_CONNECTOR_DVID))
+			if((sdev->vram_size == MB(256)) &&  (mode->clock >= 250000) && (count_set_bits(sdev->m_connector) > 2))
 				return MODE_NOMODE;
 	}
 		
@@ -1596,6 +1656,10 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 			
 				dbg_msg("detect DP0 connected\n");
 				sdev->m_connector = sdev->m_connector|USE_DP0;
+				ret = hw770_dp_check_sink_status(0);
+				if(ret)
+					smi_dp_set_mode(sdev, 0);
+
 				return connector_status_connected;
 			}
 			else
@@ -1632,9 +1696,13 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 			{
 				dbg_msg("detect DP1 connected\n");
 				sdev->m_connector = sdev->m_connector|USE_DP1;
+				ret = hw770_dp_check_sink_status(1);
+				if(ret)
+					smi_dp_set_mode(sdev, 1);
+					
 				return connector_status_connected;
 				
-
+				
 			}
 			else
 			{
