@@ -238,9 +238,9 @@ static void smi_dp_set_mode(struct smi_device *sdev, dp_index index)
 
 	crtc = sdev->smi_enc_tab[index]->crtc;
 	if (crtc) {
-		printk("CRTC%d found: %p\n", index,crtc);
+		dbg_msg("CRTC%d found: %p\n", index,crtc);
 	} else {
-		printk("CRTC%d not found\n",index);
+		dbg_msg("CRTC%d not found\n",index);
 		return;
 	}
 
@@ -270,13 +270,13 @@ static void smi_dp_set_mode(struct smi_device *sdev, dp_index index)
 
 
 	hw770_setMode(&logicalMode, *mode);
-	printk("Starting init SM770 DP %d! Use Channel [%d]\n", index,index);
+	dbg_msg("Starting init SM770 DP %d! Use Channel [%d]\n", index,index);
 
 	ret = hw770_set_dp_mode(&logicalMode, *mode, index);
 
 	if (ret != 0)
 	{
-		printk("DP Mode not supported!\n");
+		dbg_msg("DP Mode not supported!\n");
 		return;
 	}
 	hw770_set_current_pitch((disp_control_t)index,&fb_info);
@@ -358,7 +358,7 @@ static void smi_crtc_mode_set_nofb(struct drm_crtc *crtc)
 	    setDAC(DISP_ON);                                    /* Turn on DAC */
 
 #ifdef USE_HDMICHIP
-		printk("HDMI set mode\n");
+		printk("SI9022 HDMI set mode\n");
 		sii9022xSetMode(5);
 #endif
 
@@ -549,7 +549,8 @@ static void smi_crtc_mode_set_nofb(struct drm_crtc *crtc)
 			printk("Use Driver build-in mode timing\n");
 			logicalMode.valid_edid = false;
 		}
-
+		if(!mode->clock)
+			return;
 		
 		hw770_setMode(&logicalMode, *mode);
 		
@@ -1273,7 +1274,7 @@ read_again0:
 			if((sdev->m_connector & USE_HDMI0) && !sdev->hdmi0_edid && retry)
 			{
 				retry--;
-				printk("hdmi 0 iic resrt\n\n");
+				dbg_msg("hdmi 0 iic resrt\n\n");
 				hw770_i2c_reset_busclear(INDEX_HDMI0);
 				goto read_again0;
 			}
@@ -1309,7 +1310,7 @@ read_again1:
 			if((sdev->m_connector & USE_HDMI1) && !sdev->hdmi1_edid && retry)
 			{
 				retry--;
-				printk("hdmi 1 iic resrt\n\n");
+				dbg_msg("hdmi 1 iic resrt\n\n");
 				hw770_i2c_reset_busclear(INDEX_HDMI1);
 				goto read_again1;
 			}
@@ -1345,7 +1346,7 @@ read_again2:
 			if ((sdev->m_connector & USE_HDMI2) && !sdev->hdmi2_edid && retry)
 			{
 				retry--;
-				printk("hdmi 2 iic resrt\n\n");
+				dbg_msg("hdmi 2 iic resrt\n\n");
 				hw770_i2c_reset_busclear(INDEX_HDMI2);
 				goto read_again2;
 			}
@@ -1884,7 +1885,7 @@ static struct drm_connector *smi_connector_init(struct drm_device *dev, int inde
 			drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_HDMIA);
 			break;
 		default:
-			printk("error index of Connector\n");
+			dbg_msg("error index of Connector\n");
 	}
 	}else if(sdev->specId == SPC_SM770){
 		switch (index)
@@ -1905,7 +1906,7 @@ static struct drm_connector *smi_connector_init(struct drm_device *dev, int inde
 				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_DVID);
 				break;
 			default:
-				printk("error index of Connector\n");
+				dbg_msg("error index of Connector\n");
 		}
 	}
 
@@ -1924,7 +1925,11 @@ static struct drm_connector *smi_connector_init(struct drm_device *dev, int inde
 	}
 
 	drm_connector_helper_add(connector, &smi_vga_connector_helper_funcs);
-	connector->polled = DRM_CONNECTOR_POLL_CONNECT | DRM_CONNECTOR_POLL_DISCONNECT;
+
+	if (sdev->specId == SPC_SM770)
+		connector->polled = DRM_CONNECTOR_POLL_CONNECT | DRM_CONNECTOR_POLL_DISCONNECT | DRM_CONNECTOR_POLL_HPD;	
+	else
+		connector->polled = DRM_CONNECTOR_POLL_CONNECT | DRM_CONNECTOR_POLL_DISCONNECT;
 
 	drm_connector_register(connector);
 	
@@ -2003,7 +2008,7 @@ int smi_modeset_init(struct smi_device *cdev)
 			DRM_ERROR("smi_%s_init failed\n", index?"VGA":"DVI");
 			return -1;
 		}
-		
+		cdev->smi_conn_tab[index] = connector;
 		drm_connector_attach_encoder(connector, encoder);
 
 	}

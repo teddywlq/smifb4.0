@@ -157,19 +157,19 @@ int smi_driver_load(struct drm_device *dev, unsigned long flags)
 									  smi_hdmi0_pnp_handler, IRQF_SHARED,
 									  dev_name(cdev->dev->dev), cdev->dev);
 		if (r)
-			printk("install irq failed , ret = %d\n", r);
+			DRM_ERROR("install irq failed , ret = %d\n", r);
 
 		r = devm_request_threaded_irq(cdev->dev->dev, pdev->irq, smi_hdmi1_hardirq,
 									  smi_hdmi1_pnp_handler, IRQF_SHARED,
 									  dev_name(cdev->dev->dev), cdev->dev);
 		if (r)
-			printk("install irq failed , ret = %d\n", r);
+			DRM_ERROR("install irq failed , ret = %d\n", r);
 
 		r = devm_request_threaded_irq(cdev->dev->dev, pdev->irq, smi_hdmi2_hardirq,
 									  smi_hdmi2_pnp_handler, IRQF_SHARED,
 									  dev_name(cdev->dev->dev), cdev->dev);
 		if (r)
-			printk("install irq failed , ret = %d\n", r);
+			DRM_ERROR("install irq failed , ret = %d\n", r);
 	}
 #endif
 	cdev->regsave = kvmalloc(1024,GFP_KERNEL);

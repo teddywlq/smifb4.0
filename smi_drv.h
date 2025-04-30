@@ -30,11 +30,11 @@
 
 #define DRIVER_NAME		"smifb"
 #define DRIVER_DESC		"SiliconMotion GPU DRM Driver"
-#define DRIVER_DATE		"20250417"
+#define DRIVER_DATE		"20250429"
 
 #define DRIVER_MAJOR		4
-#define DRIVER_MINOR		2
-#define DRIVER_PATCHLEVEL	1
+#define DRIVER_MINOR		3
+#define DRIVER_PATCHLEVEL	0
 
 #define SMIFB_CONN_LIMIT 3
 
@@ -44,7 +44,7 @@
 #define SUPPORT_CHIP " SM750, SM768, SM770"
 
 
-#define _version_	"4.2.1.0"
+#define _version_	"4.3.0.0"
 
 #undef  NO_WC
 
@@ -146,7 +146,7 @@ struct smi_device {
 	//bit 0: DVI, bit 1: VGA, bit 2: HDMI, bit 3: HDMI1, bit 4: HDMI2, bit 5: DP, bit 6: DP1
 
 	struct drm_encoder *smi_enc_tab[MAX_ENCODER_770];
-
+	struct drm_connector *smi_conn_tab[MAX_ENCODER_770];
 	struct smi_mode_info mode_info;
 
 	int num_crtc;

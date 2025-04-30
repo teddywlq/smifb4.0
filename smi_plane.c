@@ -511,7 +511,7 @@ static void smi_primary_plane_helper_atomic_disable(struct drm_plane *plane, str
 #endif
 {
 	//Add disable plane.
-	printk("smi_primary_plane_helper_atomic_disable():\n");
+	dbg_msg("smi_primary_plane_helper_atomic_disable():\n");
 }
 static const struct drm_plane_helper_funcs smi_primary_plane_helper_funcs = {
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5,18,0)
