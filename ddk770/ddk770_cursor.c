@@ -12,6 +12,7 @@
 #include "ddk770_reg.h"
 #include "ddk770_cursor.h"
 #include "ddk770_help.h"
+#include "ddk770_display.h"
 
 
 
@@ -53,7 +54,7 @@ void SetCursorPrefetch(
     unsigned long cursorRegister, value;
 
     cursorRegister = HWC_LOCATION + (dispControl> 1? CHANNEL_OFFSET2 : dispControl * CHANNEL_OFFSET);
-
+    
 	value = peekRegisterDWord(cursorRegister);
 	if(enable)
     	value = FIELD_SET(value, HWC_LOCATION, PREFETCH, ENABLE);
@@ -61,6 +62,7 @@ void SetCursorPrefetch(
 		value = FIELD_SET(value, HWC_LOCATION, PREFETCH, DISABLE);
 	
     pokeRegisterDWord(cursorRegister, value);
+    ddk770_waitDispVerticalSync(dispControl,2);
 }
 
 
@@ -143,7 +145,7 @@ void ddk770_setCursorPosition(
 	value = FIELD_VALUE(value, HWC_LOCATION, SIZE, 0);
 
     /* Set the register accordingly, either Panel cursor or CRT cursor */
-    pokeRegisterDWord(HWC_LOCATION + (dispControl> 1? CHANNEL_OFFSET2 : dispControl * CHANNEL_OFFSET), value);
+    pokeRegisterDWord(cursorRegister, value);
 }
 
 
@@ -160,14 +162,14 @@ void ddk770_enableCursor(
     unsigned long cursorRegister, value;
 
 
-#if 1
+#if 0
 	cursorRegister = HWC_LOCATION + (dispControl> 1? CHANNEL_OFFSET2 : dispControl * CHANNEL_OFFSET);
 	value = peekRegisterDWord(cursorRegister);
-	value = FIELD_SET(value, HWC_LOCATION, PREFETCH, ENABLE);
+	value = FIELD_SET(value, HWC_LOCATION, PREFETCH, DISABLE);
 	pokeRegisterDWord(cursorRegister, value);
 #endif
 
-	 cursorRegister = HWC_CONTROL + (dispControl> 1? CHANNEL_OFFSET2 : dispControl * CHANNEL_OFFSET);
+	cursorRegister = HWC_CONTROL + (dispControl> 1? CHANNEL_OFFSET2 : dispControl * CHANNEL_OFFSET);
 	value = peekRegisterDWord(cursorRegister);
     value = FIELD_VALUE(value, HWC_CONTROL, MODE, mode);
     

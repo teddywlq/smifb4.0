@@ -101,6 +101,7 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	
 	u8 __iomem *dst;
 	int x, y;
+	int width;
 	disp_control_t disp_ctrl;
 	int i, ctrl_index = 0, max_enc = 0;	
 	struct smi_device *sdev = plane->dev->dev_private;
@@ -196,6 +197,8 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	x = plane_state->crtc_x;
 	y = plane_state->crtc_y;
 
+	width = hw770_get_current_mode_width(disp_ctrl);
+
 	/* set cursor location */
 	if (sdev->specId == SPC_SM750) {
 		ddk750_setCursorPosition(disp_ctrl, x < 0 ? -x : x, y < 0 ? -y : y, y < 0 ? 1 : 0,
@@ -206,6 +209,14 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	} else if (sdev->specId == SPC_SM770) {
 		ddk770_setCursorPosition(disp_ctrl, x < 0 ? -x : x, y < 0 ? -y : y, y < 0 ? 1 : 0,
 					 x < 0 ? 1 : 0);
+	}
+
+	//printk("current cursor position dc:%d x:%d  y:%d  width:%d\n",disp_ctrl,x,y,width);
+	if((x + 64) > width)
+	{
+		SetCursorPrefetch(disp_ctrl,0);
+	}else{
+		SetCursorPrefetch(disp_ctrl,1);
 	}
 
 }
