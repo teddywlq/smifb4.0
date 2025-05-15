@@ -207,15 +207,13 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 					 x < 0 ? 1 : 0);
 	} else if (sdev->specId == SPC_SM770) {
 		width = hw770_get_current_mode_width(disp_ctrl);
-		ddk770_setCursorPosition(disp_ctrl, x < 0 ? -x : x, y < 0 ? -y : y, y < 0 ? 1 : 0,
-					 x < 0 ? 1 : 0);
+		if((x + CURSOR_WIDTH) > width)
+			ddk770_setCursorPosition(disp_ctrl, x < 0 ? -x : x, y < 0 ? -y : y, y < 0 ? 1 : 0,
+					 x < 0 ? 1 : 0, 0);
+		else
+			ddk770_setCursorPosition(disp_ctrl, x < 0 ? -x : x, y < 0 ? -y : y, y < 0 ? 1 : 0,
+					 x < 0 ? 1 : 0, 1);
 		//printk("current cursor position dc:%d x:%d  y:%d  width:%d\n",disp_ctrl,x,y,width);
-		if((x + 64) > width)
-		{
-			SetCursorPrefetch(disp_ctrl,0);
-		}else{
-			SetCursorPrefetch(disp_ctrl,1);
-		}
 	}
 
 }
