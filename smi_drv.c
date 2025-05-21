@@ -299,7 +299,12 @@ static int smi_drm_freeze(struct drm_device *dev)
 		if(audio_en)
 			 smi_audio_suspend(sdev);
 #endif
+
 		hw770_suspend(sdev->regsave_770);
+		
+		hw770_hdmi_interrupt_enable(0,0);
+		hw770_hdmi_interrupt_enable(1,0);
+		hw770_hdmi_interrupt_enable(2,0);
     }
 	ret = drm_mode_config_helper_suspend(dev);
 	if (ret)
@@ -542,7 +547,7 @@ irqreturn_t smi_hdmi1_hardirq(int irq, void *dev_id)
 
 	ret = hw770_check_pnp_interrupt(1);
 	if (ret)
-	{
+	{	
 		return IRQ_WAKE_THREAD;
 	}
 
@@ -555,7 +560,7 @@ irqreturn_t smi_hdmi2_hardirq(int irq, void *dev_id)
 
 	ret = hw770_check_pnp_interrupt(2);
 	if (ret)
-	{
+	{	
 		return IRQ_WAKE_THREAD;
 	}
 
