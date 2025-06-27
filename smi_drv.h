@@ -85,7 +85,7 @@
 
 
 #define SM768_MAX_MODE_SIZE (80<<20)
-#define SM750_MAX_MODE_SIZE (16<<20)
+#define SM750_MAX_MODE_SIZE (8<<20)
 #define smi_DPMS_CLEARED (-1)
 
 extern unsigned int sm770_max_mode_size;

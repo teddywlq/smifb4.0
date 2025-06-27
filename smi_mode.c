@@ -1400,6 +1400,8 @@ static enum drm_mode_status smi_connector_mode_valid(struct drm_connector *conne
 			return MODE_NOMODE;
 	}
 
+	if((sdev->specId == SPC_SM750) && (mode->clock >= 80000) && (sdev->m_connector == USE_DVI_VGA))
+		return MODE_NOMODE;
 	if(connector->connector_type == DRM_MODE_CONNECTOR_DVII){
 		if(mode->clock >= 200000)
 				return MODE_NOCLOCK;
@@ -1490,11 +1492,13 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 
 			if (ret)
 			{
+				sdev->m_connector = sdev->m_connector | USE_DVI;
 				dbg_msg("detect DVI/Panel connected.\n");
 				return connector_status_connected;
 			}
 			else
 			{
+				sdev->m_connector = sdev->m_connector & (~USE_DVI);
 				dbg_msg("detect DVI/Panel DO NOT connected.\n");
 				return connector_status_disconnected;
 			}
@@ -1512,11 +1516,13 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 
 			if(!drm_probe_ddc(&smi_connector->adapter))
 			{
+				sdev->m_connector = sdev->m_connector & (~USE_VGA);
 				dbg_msg("detect CRT DO NOT connected.\n");
 				return connector_status_disconnected;
 			}
 			else
 			{
+				sdev->m_connector = sdev->m_connector | USE_VGA;
 				dbg_msg("detect CRT connected.\n");
 				return connector_status_connected;
 			}
