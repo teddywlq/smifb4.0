@@ -17,6 +17,7 @@
 int g_if_scrambling_lowR_HDMI[3] = { 0, 0, 0};
 int g_scdc_present[3] = { 1, 1, 1};
 
+static DEFINE_MUTEX(hdmi_mode_mutex);
 /**
  * Find first (least significant) bit set
  * @param[in] data word to search
@@ -851,18 +852,19 @@ long ddk770_HDMI_Set_Mode(hdmi_index index, logicalMode_t *pLogicalMode, mode_pa
     cea_parameter_t cea_mode = {0};
     u8 scdc_val;
     long ret =0;
-
+	unsigned long flags;
 	ret = Get_CEA_Mode(pLogicalMode,&cea_mode, pModeParam, 0);
 	if(ret < 0)
 	{
 		return ret;
     }
 
+	mutex_lock(&hdmi_mode_mutex);
 	phy_standby(index);
     api_avmute(index, 1);
 	ddk770_HDMI_Intr_Mute(index,1);
 
-    printk("HDMI Set Mode\n");
+    printk("HDMI %d Set Mode\n",index);
 	
 	fc_force_output(index, 1);
 		
@@ -916,6 +918,7 @@ long ddk770_HDMI_Set_Mode(hdmi_index index, logicalMode_t *pLogicalMode, mode_pa
 	
 	ddk770_HDMI_Intr_Mute(index,0);
     api_avmute(index,0);
+	mutex_unlock(&hdmi_mode_mutex);
     return ret;
 
 }
