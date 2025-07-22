@@ -1125,7 +1125,7 @@ static int hdmi_phy_configure(hdmi_index index, u32 pClk, color_depth_t color, p
 	for (i = 0; i < PHY_TIMEOUT; i++) {
 		lock = phy_phase_lock_loop_state(index);
 		if (lock & 0x1) {
-			printk("PHY PLL locked\n");
+			printk("HDMI %d PHY PLL locked\n",index);
 			return 0;
 		}
 		usleep_range(1000, 2000);

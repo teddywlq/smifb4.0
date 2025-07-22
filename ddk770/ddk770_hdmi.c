@@ -1218,6 +1218,7 @@ static int ddk770_hdmi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	mutex_lock(&connector->i2c_lock);
 	connector->i2c_is_segment = false;
 	connector->i2c_is_regaddr = false;
+	connector->i2c_slave_number = 0;
 
 	/* reset */
 	if (connector->base.connector_type == DRM_MODE_CONNECTOR_HDMIA) {
@@ -1244,6 +1245,7 @@ static int ddk770_hdmi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	for (i = 0; i < num; i++) {
 		if (msgs[i].addr == EDID_I2C_SEGMENT_ADDR && msgs[i].len == 1) {
 			connector->i2c_is_segment = true;
+			connector->i2c_slave_number = (u8)*msgs[i].buf;
 			continue;
 		}
 
@@ -1254,10 +1256,9 @@ static int ddk770_hdmi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 			}
 
 			if (connector->i2c_is_segment) {
-				ret = ddc_read(index,
-					       EDID_I2C_ADDR,
+				ret = ddc_read(index, EDID_I2C_ADDR,
 					       EDID_I2C_SEGMENT_ADDR,
-					       *msgs[i].buf,
+					       connector->i2c_slave_number,
 					       connector->i2c_slave_reg,
 					       msgs[i].len, msgs[i].buf);
 				if (ret) {
@@ -1266,8 +1267,7 @@ static int ddk770_hdmi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 				}
 				connector->i2c_slave_reg += msgs[i].len;
 			} else {
-				ret = ddc_read(index,
-					       EDID_I2C_ADDR, 0, 0,
+				ret = ddc_read(index, EDID_I2C_ADDR, 0, 0,
 					       connector->i2c_slave_reg,
 					       msgs[i].len, msgs[i].buf);
 				if (ret) {
@@ -1284,14 +1284,7 @@ static int ddk770_hdmi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 				msgs[i].len--;
 				msgs[i].buf++;
 				connector->i2c_is_regaddr = true;
-			}
 
-			ret = ddc_write(index, EDID_I2C_ADDR,
-					connector->i2c_slave_reg, msgs[i].len,
-					msgs[i].buf);
-			if (ret) {
-				pr_err("ddc_write failed\n");
-				goto end;
 			}
 			connector->i2c_slave_reg += msgs[i].len;
 		}
