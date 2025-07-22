@@ -12,6 +12,7 @@
 #include "ddk770/ddk770_cursor.h"
 #include "ddk770/ddk770_video.h"
 #include "ddk770/ddk770_hdmi.h"
+#include "ddk770/ddk770_chip.h"
 #include "ddk770/ddk770_pwm.h"
 #include "ddk770/ddk770_swi2c.h"
 #include "ddk770/ddk770_hwi2c.h"
@@ -109,6 +110,9 @@ void hw770_suspend(struct smi_770_register * pSave)
 
 void hw770_resume(struct smi_770_register * pSave)
 {
+	if (ddk770_GetChipRev() == CHIP_REV_AB) {
+		pokeRegisterDWord(0x130, 0x78000000);
+	}
 
 	// int i;
 
