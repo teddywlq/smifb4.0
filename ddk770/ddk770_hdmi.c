@@ -852,7 +852,6 @@ long ddk770_HDMI_Set_Mode(hdmi_index index, logicalMode_t *pLogicalMode, mode_pa
     cea_parameter_t cea_mode = {0};
     u8 scdc_val;
     long ret =0;
-	unsigned long flags;
 	ret = Get_CEA_Mode(pLogicalMode,&cea_mode, pModeParam, 0);
 	if(ret < 0)
 	{
