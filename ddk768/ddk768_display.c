@@ -18,7 +18,7 @@
  *
  * Output:
  *      0   - Success
- *      1   - Fail 
+ *      1   - Fail
  */
 long initDisplay()
 {
@@ -40,8 +40,8 @@ long initDisplay()
 }
 
 /* New for Falcon: DPMS control is moved to display controller.
- * This function sets the display DPMS state 
- * It is used to set CRT monitor to On, off, or suspend states, 
+ * This function sets the display DPMS state
+ * It is used to set CRT monitor to On, off, or suspend states,
  * while display channel are still active.
  */
 void setDisplayDPMS(
@@ -80,11 +80,11 @@ void setDisplayDPMS(
 
 /* 
  * New for Falcon.
- * This funciton configures:
+ * This function configures:
  * 1. Output from channel 0 or channel 1 is 24 single or 48 double pixel.
  * 2. Output data comes from data path of channel 0 or channel 1.
  *
- * Input: See the commnet in the input parameter below.
+ * Input: See the comment in the input parameter below.
  *
  * Return: 0 is OK, -1 is error.
  */
@@ -255,17 +255,17 @@ void ddk768_swPanelPowerSequence(disp_control_t dispControl, disp_state_t dispSt
         /* Turn on FPVDDEN. */
         ulDispCtrlReg = FIELD_SET(ulDispCtrlReg, DISPLAY_CTRL, FPVDDEN, HIGH);
         pokeRegisterDWord(ulDispCtrlAddr, ulDispCtrlReg);
-		waitDispVerticalSync(dispControl, vSyncDelay);
+        waitDispVerticalSync(dispControl, vSyncDelay);
 
         /* Turn on FPDATA. */
         ulDispCtrlReg = FIELD_SET(ulDispCtrlReg, DISPLAY_CTRL, DATA, ENABLE);
         pokeRegisterDWord(ulDispCtrlAddr, ulDispCtrlReg);
-		waitDispVerticalSync(dispControl, vSyncDelay);
+        waitDispVerticalSync(dispControl, vSyncDelay);
 
         /* Turn on FPVBIAS. */
         ulDispCtrlReg = FIELD_SET(ulDispCtrlReg, DISPLAY_CTRL, VBIASEN, HIGH);
         pokeRegisterDWord(ulDispCtrlAddr, ulDispCtrlReg);
-		waitDispVerticalSync(dispControl, vSyncDelay);
+        waitDispVerticalSync(dispControl, vSyncDelay);
 
         /* Turn on FPEN. */
         ulDispCtrlReg = FIELD_SET(ulDispCtrlReg, DISPLAY_CTRL, FPEN, HIGH);
@@ -486,7 +486,7 @@ long ddk768_detectCRTMonitor(
 
 /*
  * This function controls monitor on/off and data path.
- * It can be used to set up any veiws: single view, clone view, dual view, output with channel swap, etc.
+ * It can be used to set up any views: single view, clone view, dual view, output with channel swap, etc.
  * However, it needs too many input parameter.
  * There are other set view functions with less parameters, but not as flexible as this one.
  *
@@ -510,7 +510,7 @@ long setDisplayView(
 }
 
 /*
- * Convenient function to trun on single view 
+ * Convenient function to turn on single view 
  */
 long setSingleViewOn(disp_control_t dispOutput)
 {
@@ -524,7 +524,7 @@ long setSingleViewOn(disp_control_t dispOutput)
 }
 
 /*
- * Convenient function to trun off single view 
+ * Convenient function to turn off single view 
  */
 long setSingleViewOff(disp_control_t dispOutput)
 {
@@ -538,7 +538,7 @@ long setSingleViewOff(disp_control_t dispOutput)
 }
 
 /*
- * Convenient function to trun on clone view 
+ * Convenient function to turn on clone view 
  */
 long setCloneViewOn(disp_control_t dataPath)
 {
@@ -558,7 +558,7 @@ long setCloneViewOn(disp_control_t dataPath)
 }
 
 /*
- * Convenient function to trun on dual view 
+ * Convenient function to turn on dual view 
  */
 long setDualViewOn()
 {
@@ -569,7 +569,7 @@ long setDualViewOn()
 }
 
 /*
- * Convenient function to trun off all views
+ * Convenient function to turn off all views
  */
 long setAllViewOff()
 {

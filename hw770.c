@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0+
 // Copyright (c) 2023, SiliconMotion Inc.
 
-
 #include <drm/drm_modes.h>
-#include "ddk770/ddk770_reg.h"	
+#include "ddk770/ddk770_reg.h"
 #include "ddk770/ddk770_help.h"
 #include "ddk770/ddk770_mode.h"
-#include "ddk770/ddk770_hardware.h"	   
-#include "ddk770/ddk770_display.h"      
+#include "ddk770/ddk770_hardware.h"
+#include "ddk770/ddk770_display.h"
 #include "ddk770/ddk770_power.h"
 #include "ddk770/ddk770_cursor.h"
 #include "ddk770/ddk770_video.h"
@@ -23,7 +22,6 @@
 #include "hw770.h"
 #include "smi_snd.h"
 #include "smi_ver.h"
-
 
 extern int lcd_scale;
 extern int pwm_ctrl;
@@ -117,6 +115,7 @@ void hw770_resume(struct smi_770_register * pSave)
 	ddk770_iis_Init();
 	hw770_init_hdmi();
 	hw770_init_dp();
+
 	// int i;
 
 	// pokeRegisterDWord(CLOCK_ENABLE, pSave->clock_enable);

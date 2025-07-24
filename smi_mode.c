@@ -212,7 +212,7 @@ static int smi_crtc_set_gamma(struct drm_crtc *crtc, const struct drm_format_inf
 		else
 			hw768_setgamma(dst_ctrl, true , 0);
 			
-			hw768_load_lut(dst_ctrl, crtc->gamma_size, smi_crtc->lut_r, smi_crtc->lut_g, smi_crtc->lut_b);
+		hw768_load_lut(dst_ctrl, crtc->gamma_size, smi_crtc->lut_r, smi_crtc->lut_g, smi_crtc->lut_b);
 	}else if (sdev->specId == SPC_SM770) {
 		hw770_setgamma(dst_ctrl, true);
 		hw770_load_lut(dst_ctrl, crtc->gamma_size, smi_crtc->lut_r, smi_crtc->lut_g, smi_crtc->lut_b);
@@ -510,7 +510,7 @@ static void smi_crtc_mode_set_nofb(struct drm_crtc *crtc)
 		}
 
 		dst_ctrl = smi_encoder_crtc_index_changed(encoder_index);
-		
+
 		logicalMode.baseAddress = 0;
 		logicalMode.x = mode->hdisplay;
 		logicalMode.y = mode->vdisplay;
@@ -1029,7 +1029,7 @@ static struct drm_encoder *smi_encoder_init(struct drm_device *dev, int index)
 				//HDMI
 				encoder->possible_crtcs = 0x4;
 				drm_encoder_init(dev, encoder, &smi_encoder_encoder_funcs, DRM_MODE_ENCODER_TMDS, NULL);
-				break;
+				break;		
 			default:
 				printk(KERN_ERR "Wrong connector index\n");
 		}
@@ -1046,10 +1046,13 @@ static int hdmi_get_edid_property(struct drm_connector *connector,
 	int count = 0;
 	struct smi_device *sdev = connector->dev->dev_private;
 	struct smi_connector *smi_connector = to_smi_connector(connector);
+
 	ENTER();
+
 #if USE_I2C_ADAPTER
 read_again0:
 	hdmi_edid = drm_get_edid(connector, &smi_connector->adapter);
+
 	if ((sdev->m_connector & use_flag) && !hdmi_edid && retry) {
 		retry--;
 		dbg_msg("HDMI_%d iic reset\n\n", index);
@@ -1077,6 +1080,7 @@ read_again0:
 		drm_set_preferred_mode(connector, fixed_width, fixed_height);
 		sdev->is_hdmi[index] = true;
 	}
+
 	LEAVE(count);
 }
 
@@ -1352,6 +1356,7 @@ static enum drm_mode_status smi_connector_mode_valid(struct drm_connector *conne
 
 	if((sdev->specId == SPC_SM750) && (mode->clock >= 80000) && (sdev->m_connector == USE_DVI_VGA))
 		return MODE_NOMODE;
+
 	if(connector->connector_type == DRM_MODE_CONNECTOR_DVII){
 		if(mode->clock >= 200000)
 				return MODE_NOCLOCK;
@@ -1466,6 +1471,7 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 
 			if(!drm_probe_ddc(&smi_connector->adapter))
 			{
+				
 				sdev->m_connector = sdev->m_connector & (~USE_VGA);
 				dbg_msg("detect CRT DO NOT connected.\n");
 				return connector_status_disconnected;
@@ -1656,7 +1662,7 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 				ret = hw770_dp_check_sink_status(1);
 				if(ret)
 					smi_dp_set_mode(sdev, 1);
-					
+
 				return connector_status_connected;
 				
 				

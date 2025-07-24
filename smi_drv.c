@@ -774,15 +774,16 @@ error:
 
 
 static int smi_dumb_create_align(struct drm_file *file, struct drm_device *dev,
-			     struct drm_mode_create_dumb *args)
+	struct drm_mode_create_dumb *args)
 {
-	struct smi_device *sdev = dev->dev_private;
-	if(sdev->specId == SPC_SM770){
-		args->width = alignLineOffset(args->width * args->bpp / 8) / (args->bpp / 8);
-	}
-	else
-		args->width = ALIGN (args->width , 8);	
-	return drm_gem_shmem_dumb_create(file, dev,  args);
+struct smi_device *sdev = dev->dev_private;
+if(sdev->specId == SPC_SM770){
+args->width = alignLineOffset(args->width * args->bpp / 8) / (args->bpp / 8);
+}
+else
+args->width = ALIGN (args->width , 8);	
+//printk("smi_dumb_create_align args->width:%d args->height:%d\n",args->width,args->height);
+return drm_gem_shmem_dumb_create(file, dev,  args);
 }
 
 

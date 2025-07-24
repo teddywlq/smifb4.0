@@ -17,6 +17,7 @@
 int g_if_scrambling_lowR_HDMI[3] = { 0, 0, 0};
 int g_scdc_present[3] = { 1, 1, 1};
 
+
 static DEFINE_MUTEX(hdmi_mode_mutex);
 /**
  * Find first (least significant) bit set
@@ -1286,7 +1287,6 @@ static int ddk770_hdmi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 				msgs[i].len--;
 				msgs[i].buf++;
 				connector->i2c_is_regaddr = true;
-
 			}
 			connector->i2c_slave_reg += msgs[i].len;
 		}

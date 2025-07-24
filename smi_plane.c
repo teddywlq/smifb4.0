@@ -258,7 +258,7 @@ static void smi_cursor_atomic_disable(struct drm_plane *plane,
 		disp_ctrl = (disp_control_t)smi_encoder_crtc_index_changed(ctrl_index);
 	}
 
-	
+		
 	if (sdev->specId == SPC_SM750) {
 		ddk750_enableCursor(disp_ctrl, 0);
 	} else if(sdev->specId == SPC_SM768) {
@@ -401,7 +401,7 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 
 	x = (plane_state->src_x >> 16);
 	y = (plane_state->src_y >> 16);
-
+	//printk("before smi_handle_damage dc%d x:%d  y:%d\n",disp_ctrl,x,y);
 	/* primary plane offset */
 	if(disp_ctrl == 0) 
 		dst_off = 0;  /* with shmem, the primary plane is always at offset 0 */
@@ -436,14 +436,14 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 	}
 	else
 		smi_plane->vaddr = (smi_plane->vaddr_base + dst_off + smi_plane->align);
-	//printk("smi_primary_plane_atomic_update(): disp_ctrl %d,  vram_size %x, dst_off %x  pitch %d\n", disp_ctrl,  smi_plane->vram_size, dst_off,fb->pitches[0]);
-
+	//printk("smi_primary_plane_atomic_update(): disp_ctrl %d,  vram_size %x, dst_off %x  pitch %d  smi_plane->vaddr_base:%p\n", disp_ctrl,  smi_plane->vram_size, dst_off,fb->pitches[0],smi_plane->vaddr_base);
+	
 	drm_atomic_helper_damage_iter_init(&iter, old_plane_state, plane_state);
 	drm_atomic_for_each_plane_damage(&iter, &damage) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 2, 0)
 		smi_handle_damage(smi_plane, shadow_plane_state->data, fb, &damage);
 #else
-		smi_handle_damage(smi_plane, fb, &damage);
+		smi_handle_damage(smi_plane, fb, &damage);		
 #endif
 	}
 
@@ -458,7 +458,7 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 	else
 		offset = dst_off + y * fb->pitches[0] + x * fb->format->cpp[0] + smi_plane->align;
 
-	//printk("DC%d set_base: offset %x, distoffset %x, pitch %d, x %d, y %d\n", disp_ctrl,offset,dst_off, fb->pitches[0], x, y);
+	//printk("DC%d set_base: offset %x, distoffset %x, pitch %d, x %d, y %d  align %d\n", disp_ctrl,offset,dst_off, fb->pitches[0], x, y,smi_plane->align);
 	if (sdev->specId == SPC_SM750) {
 		hw750_set_base(disp_ctrl, fb->pitches[0], offset);
 	} else if (sdev->specId == SPC_SM768) {
@@ -485,6 +485,7 @@ static int smi_primary_plane_atomic_check(struct drm_plane *plane,
 #endif
 )
 {
+	//printk("smi_primary_plane_atomic_check plane addr:%p\n",plane);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
 	struct drm_plane_state *state = drm_atomic_get_new_plane_state(atom_state, plane);
 #endif
@@ -492,10 +493,10 @@ static int smi_primary_plane_atomic_check(struct drm_plane *plane,
 	struct drm_crtc_state *crtc_state;
 
 	ENTER();
-	
+
 	if (!crtc)
 		LEAVE(0);
-	
+	//printk("smi_primary_plane_atomic_check plane addr:%p  crtc indrx %d\n",plane,crtc->index);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 13, 0)
 	crtc_state = drm_atomic_get_crtc_state(state->state, crtc);
 #else
