@@ -1184,6 +1184,8 @@ void DP_Set_Channel(dp_index index, disp_control_t dc)
         disp_index = DP0;
     }else if (index == INDEX_DP1){
         disp_index = DP1;
+    }else{
+		return;
     }
     
     setDCMUX(disp_index, dc);
@@ -1198,6 +1200,8 @@ void DP_Clear_Channel(dp_index index)
         disp_index = DP0;
     }else if (index == INDEX_DP1){
         disp_index = DP1;
+    }else{
+		return;
     }
     
     ClearDCMUX(disp_index);
@@ -1212,6 +1216,8 @@ unsigned char DP_Get_Channel(dp_index index)
         disp_index = DP0;
     }else if (index == INDEX_DP1){
         disp_index = DP1;
+    }else{
+		return 0;
     }
     
     return GetDCMUX(disp_index);

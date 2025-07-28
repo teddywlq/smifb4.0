@@ -57,6 +57,10 @@ long ddk768_deWaitForNotBusy(void);
  */
 long deWaitIdle(unsigned long i);
 
+unsigned long ddk768_deGetTransparency(void);
+void ddk768_deSetPixelFormat(
+    unsigned long bpp
+);
 /*
  * This function enable/disable clipping area for the 2d engine.
  * Note that the clipping area is always rectangular.
