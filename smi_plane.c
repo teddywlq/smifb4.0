@@ -311,12 +311,20 @@ static void smi_handle_damage(struct smi_plane *smi_plane,
 	dst += drm_fb_clip_offset(fb->pitches[0], fb->format, clip);
 	drm_fb_memcpy_toio(dst, fb->pitches[0], map.vaddr, fb, clip);
 	drm_gem_shmem_vunmap(to_drm_gem_shmem_obj(fb->obj[0]), &map);
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+    void *dst = back_buffer;
+    struct dma_buf_map map;
+    struct drm_gem_shmem_object* shem;
+    shem = to_drm_gem_shmem_obj(fb->obj[0]);
+    drm_gem_shmem_vmap(shem,&map);
+	dst += drm_fb_clip_offset(fb->pitches[0], fb->format, clip);
+    drm_fb_memcpy_toio(dst, fb->pitches[0], map.vaddr, fb, clip);
+	drm_gem_shmem_vunmap(shem, &map);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 61)
 	struct dma_buf_map map;
 	struct drm_gem_shmem_object* shem;
-	int ret;
 	shem = to_drm_gem_shmem_obj(fb->obj[0]);
-	ret = drm_gem_shmem_vmap(shem,&map);
+	drm_gem_shmem_vmap(shem,&map);
 	drm_fb_memcpy_dstclip(back_buffer, fb->pitches[0],map.vaddr, fb, clip);
 	drm_gem_shmem_vunmap(shem, &map);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
