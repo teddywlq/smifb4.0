@@ -1850,6 +1850,7 @@ static struct drm_connector *smi_connector_init(struct drm_device *dev, int inde
 			dbg_msg("error index of Connector\n");
 	}
 	}else if(sdev->specId == SPC_SM770){
+		u32 dw_version = 0;
 		switch (index)
 		{
 			case 0:
@@ -1860,18 +1861,24 @@ static struct drm_connector *smi_connector_init(struct drm_device *dev, int inde
 				break;
 			case 2:
 				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_HDMIA);
+			dw_version = (ddk770_HDMI_Read_Register(INDEX_HDMI0, HDMI_DESIGN_ID) << 8) | (ddk770_HDMI_Read_Register(INDEX_HDMI0, HDMI_REVISION_ID) << 0);
 				break;
 			case 3:
 				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_HDMIB);
+			dw_version = (ddk770_HDMI_Read_Register(INDEX_HDMI1, HDMI_DESIGN_ID) << 8) | (ddk770_HDMI_Read_Register(INDEX_HDMI1, HDMI_REVISION_ID) << 0);
 				break;
 			case 4:
 				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_DVID);
+			dw_version = (ddk770_HDMI_Read_Register(INDEX_HDMI2, HDMI_DESIGN_ID) << 8) | (ddk770_HDMI_Read_Register(INDEX_HDMI2, HDMI_REVISION_ID) << 0);
 				break;
 			default:
 				dbg_msg("error index of Connector\n");
 		}
+		if (dw_version >= 0x200a)
+		{
+			connector->ycbcr_420_allowed = true;
 	}
-
+	}
 
 	if (sdev->specId == SPC_SM750) 
 	{
