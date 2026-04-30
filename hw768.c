@@ -17,12 +17,18 @@
 #include "ddk768/ddk768_swi2c.h"
 #include "ddk768/ddk768_hwi2c.h"
 
+#ifdef USE_LT8618
+#include "ddk768/lt8618.h" 
+#endif
 
 #include "smi_ver.h"
 #include "hw768.h"
 
 extern int lcd_scale;
 
+#ifdef USE_LT8618
+extern LT8618_SUPPORTMODE lt8618_SupportMode[SUPPORTMODE];
+#endif
 
 
 struct smi_768_register{
@@ -185,6 +191,25 @@ void hw768_set_base(int display,int pitch,int base_addr)
 	}
 }
 
+#ifdef USE_LT8618
+void hw768_init_lt8618(void)
+{
+	smi_lt8618Init();
+}
+int hw768_lt8618TaskWork(unsigned long width, unsigned long height)
+{
+	return smi_lt8618SX_Task(width, height);
+}
+int lt8618_SupportModeValid(unsigned short width, unsigned short height, unsigned int vrefresh)
+{
+	int i;
+	for(i = 0; i < SUPPORTMODE; i++){
+		if(width == lt8618_SupportMode[i].width && height == lt8618_SupportMode[i].hight && vrefresh == lt8618_SupportMode[i].vrefresh)
+			return 0;
+	}
+	return -1;
+}
+#endif
 int hw768_set_hdmi_mode(logicalMode_t *pLogicalMode, struct drm_display_mode mode, bool isHDMI)
 {
 	int ret = 1;

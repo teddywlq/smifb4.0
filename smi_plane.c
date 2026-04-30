@@ -167,7 +167,7 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	//printk("smi_cursor_atomic_update() disp_ctrl %d, fb->width %d, fb->height %d cpp %d\n", disp_ctrl, fb->width, fb->height, fb->format->cpp[0]);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
 	memcpy_toio(dst, src, fb->width * fb->height * fb->format->cpp[0]);
-#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,0)
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,61)
 	memcpy_toio(dst, map.vaddr, fb->width * fb->height * fb->format->cpp[0]);
 	drm_gem_shmem_vunmap(shem,&map);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
@@ -282,19 +282,49 @@ static const struct drm_plane_helper_funcs smi_cursor_helper_funcs = {
 	.atomic_disable = smi_cursor_atomic_disable,
 };
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 17, 0)
+void smi_fb_memcpy_dstclip(void __iomem *dst, unsigned int clip_offset, unsigned int dst_pitch,
+			   void *vaddr, struct drm_framebuffer *fb,
+			   struct drm_rect *clip)
+{
+	unsigned int cpp = fb->format->cpp[0];
+	unsigned int dst_offset = clip_offset;
+	unsigned int src_offset = clip->y1 * fb->pitches[0] + clip->x1 * cpp;
+	size_t len = (clip->x2 - clip->x1) * cpp;
+	unsigned int y, lines = clip->y2 - clip->y1;
 
+	vaddr += src_offset;
+	dst += dst_offset;
+	for (y = 0; y < lines; y++) {
+		memcpy_toio(dst, vaddr, len);
+		vaddr += fb->pitches[0];
+		dst += dst_pitch;
+	}
+}
+#endif
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-static void smi_handle_damage(struct smi_plane *smi_plane, struct iosys_map *src,
+static void smi_handle_damage(struct smi_plane *smi_plane, struct drm_plane_state *plane_state, struct iosys_map *src,
 			      struct drm_framebuffer *fb,
 			      struct drm_rect *clip)
 #else
-static void smi_handle_damage(struct smi_plane *smi_plane, 
+static void smi_handle_damage(struct smi_plane *smi_plane, struct drm_plane_state *plane_state, 
 			      struct drm_framebuffer *fb,
 			      struct drm_rect *clip)
 #endif
 {
 	void *back_buffer;
+	struct drm_crtc* crtc = plane_state->crtc;
+	unsigned int plane_visbleX = (plane_state->src_x >> 16);
+	unsigned int plane_visbleY = (plane_state->src_y >> 16);
+	unsigned int clip_offset;
+	unsigned int dst_pitch[4] = {
+		0, 0, 0, 0
+	};
+	unsigned int width = crtc->state->adjusted_mode.hdisplay;
+	unsigned int mode_pitch = alignLineOffset(width * fb->format->cpp[0]);
+	clip_offset =  (clip->x1 - plane_visbleX) * 4 + (clip->y1 - plane_visbleY) * mode_pitch;
+	dst_pitch[0] = mode_pitch;
 	if(use_doublebuffer)
 		back_buffer = ((smi_plane->current_buffer == 1) ? smi_plane->vaddr_back : smi_plane->vaddr_front) + smi_plane->align;
 	else
@@ -302,18 +332,19 @@ static void smi_handle_damage(struct smi_plane *smi_plane,
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
 	struct iosys_map dst;
-
+	//clip_offset = drm_fb_clip_offset(fb->pitches[0], fb->format, clip);
 	iosys_map_set_vaddr_iomem(&dst, back_buffer);
 	//printk("smi_handle_damage(): dst.vaddr_iomem: %p, src->vaddr:%p, clip_offset %x\n", dst.vaddr_iomem, src->vaddr, drm_fb_clip_offset(fb->pitches[0], fb->format, clip));
-	iosys_map_incr(&dst, drm_fb_clip_offset(fb->pitches[0], fb->format, clip));
-	//printk("smi_handle_damage(): clip x strat:%d  y start:%d  x end:%d  y end:%d\n",clip->x1, clip->y1, clip->x2, clip->y2);
-	drm_fb_memcpy(&dst, fb->pitches, src, fb, clip);
+	iosys_map_incr(&dst, clip_offset);
+	//drm_fb_memcpy(&dst, fb->pitches, src, fb, clip);
+	drm_fb_memcpy(&dst, dst_pitch, src, fb, clip);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)	
 	void *dst = back_buffer;
 	struct iosys_map map;
 	drm_gem_shmem_vmap(to_drm_gem_shmem_obj(fb->obj[0]), &map);
-	dst += drm_fb_clip_offset(fb->pitches[0], fb->format, clip);
-	drm_fb_memcpy_toio(dst, fb->pitches[0], map.vaddr, fb, clip);
+	//dst += drm_fb_clip_offset(fb->pitches[0], fb->format, clip);
+	dst += clip_offset;
+	drm_fb_memcpy_toio(dst, dst_pitch[0], map.vaddr, fb, clip);
 	drm_gem_shmem_vunmap(to_drm_gem_shmem_obj(fb->obj[0]), &map);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
     void *dst = back_buffer;
@@ -321,25 +352,24 @@ static void smi_handle_damage(struct smi_plane *smi_plane,
     struct drm_gem_shmem_object* shem;
     shem = to_drm_gem_shmem_obj(fb->obj[0]);
     drm_gem_shmem_vmap(shem,&map);
-	dst += drm_fb_clip_offset(fb->pitches[0], fb->format, clip);
-    drm_fb_memcpy_toio(dst, fb->pitches[0], map.vaddr, fb, clip);
+	//dst += drm_fb_clip_offset(fb->pitches[0], fb->format, clip);
+	dst += clip_offset;
+    drm_fb_memcpy_toio(dst, dst_pitch[0], map.vaddr, fb, clip);
 	drm_gem_shmem_vunmap(shem, &map);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 61)
 	struct dma_buf_map map;
 	struct drm_gem_shmem_object* shem;
 	shem = to_drm_gem_shmem_obj(fb->obj[0]);
 	drm_gem_shmem_vmap(shem,&map);
-	drm_fb_memcpy_dstclip(back_buffer, fb->pitches[0],map.vaddr, fb, clip);
+	//drm_fb_memcpy_dstclip(back_buffer, fb->pitches[0],map.vaddr, fb, clip);
+	smi_fb_memcpy_dstclip(back_buffer, clip_offset, dst_pitch[0], map.vaddr, fb, clip);
 	drm_gem_shmem_vunmap(shem, &map);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
     struct dma_buf_map map;
 	int ret;
 	ret = drm_gem_shmem_vmap(fb->obj[0],&map);
-#if	LINUX_VERSION_CODE < KERNEL_VERSION(5, 14, 0)
-    drm_fb_memcpy_dstclip(back_buffer, vmap, fb, clip);
-#else
-	drm_fb_memcpy_dstclip(back_buffer, fb->pitches[0],map.vaddr, fb, clip);
-#endif
+	//drm_fb_memcpy_dstclip(back_buffer, fb->pitches[0],map.vaddr, fb, clip);
+	smi_fb_memcpy_dstclip(back_buffer, clip_offset, dst_pitch[0], map.vaddr, fb, clip);
 	drm_gem_shmem_vunmap(fb->obj[0], &map);
 
 #else
@@ -351,7 +381,8 @@ static void smi_handle_damage(struct smi_plane *smi_plane,
 		return; /* BUG: SHMEM BO should always be vmapped */
 	}
 
-	drm_fb_memcpy_dstclip(back_buffer, vmap, fb, clip);
+	//drm_fb_memcpy_dstclip(back_buffer, vmap, fb, clip);
+	smi_fb_memcpy_dstclip(back_buffer,clip_offset, dst_pitch[0], vmap, fb, clip);
 	drm_gem_shmem_vunmap(fb->obj[0], vmap);
 	
 #endif
@@ -378,10 +409,12 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 	struct drm_atomic_helper_damage_iter iter;
 	struct smi_plane *smi_plane = to_smi_plane(plane);
 	struct drm_rect damage;
+	struct drm_crtc *crtc;
 	int dst_off, offset, x, y;
 	unsigned int buffer_size =0;
 	int i, ctrl_index = 0, max_enc = 0;
 	disp_control_t disp_ctrl;
+	int pitch_align = 0;
 	struct smi_device *sdev = plane->dev->dev_private;	
 
 	if (!plane_state->crtc || !plane_state->fb)
@@ -389,6 +422,8 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 
 	if (!plane_state->visible)
 		return;
+
+	crtc = plane_state->crtc;
 
 	max_enc = MAX_ENCODER(sdev->specId);
 
@@ -447,36 +482,41 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 
 	}
 	else
-		smi_plane->vaddr = (smi_plane->vaddr_base + dst_off + smi_plane->align);
+		smi_plane->vaddr = (smi_plane->vaddr_base + dst_off);
+		//smi_plane->vaddr = (smi_plane->vaddr_base + dst_off + smi_plane->align);
 	//printk("smi_primary_plane_atomic_update(): disp_ctrl %d,  vram_size %x, dst_off %x  pitch %d  smi_plane->vaddr_base:%p\n", disp_ctrl,  smi_plane->vram_size, dst_off,fb->pitches[0],smi_plane->vaddr_base);
 	
 	drm_atomic_helper_damage_iter_init(&iter, old_plane_state, plane_state);
 	drm_atomic_for_each_plane_damage(&iter, &damage) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
-		smi_handle_damage(smi_plane, shadow_plane_state->data, fb, &damage);
+		smi_handle_damage(smi_plane, plane_state, shadow_plane_state->data, fb, &damage);
 #else
-		smi_handle_damage(smi_plane, fb, &damage);		
+		smi_handle_damage(smi_plane, plane_state, fb, &damage);		
 #endif
 	}
 
 
 	fb->pitches[0] = (fb->pitches[0] + 15) & ~15;
+	pitch_align = alignLineOffset(crtc->state->adjusted_mode.hdisplay * fb->format->cpp[0]);
+	//printk("->index %d ,dst_addr:%x pitch is %x , fb_size:%d\n", disp_ctrl, dst_off, fb->pitches[0], fb->width);
 	
 	x = (plane_state->src_x >> 16);
 	y = (plane_state->src_y >> 16);
-
+	
 	if (use_doublebuffer)
 		offset = dst_off +smi_plane->current_buffer * buffer_size+ y * fb->pitches[0] + x * fb->format->cpp[0] + smi_plane->align;
 	else
-		offset = dst_off + y * fb->pitches[0] + x * fb->format->cpp[0] + smi_plane->align;
+	   offset = dst_off;
+	//offset = dst_off + y * fb->pitches[0] + x * fb->format->cpp[0] + smi_plane->align;
 
 	//printk("DC%d set_base: offset %x, distoffset %x, pitch %d, x %d, y %d  align %d\n", disp_ctrl,offset,dst_off, fb->pitches[0], x, y,smi_plane->align);
 	if (sdev->specId == SPC_SM750) {
-		hw750_set_base(disp_ctrl, fb->pitches[0], offset);
+		hw750_set_base(disp_ctrl, pitch_align, offset);
 	} else if (sdev->specId == SPC_SM768) {
-		hw768_set_base(disp_ctrl, fb->pitches[0], offset);
+		hw768_set_base(disp_ctrl, pitch_align, offset);
 	} else if (sdev->specId == SPC_SM770) {
-		hw770_set_base(disp_ctrl, fb->pitches[0], offset);
+		//hw770_set_base(disp_ctrl, fb->pitches[0], offset);
+		hw770_set_base(disp_ctrl, pitch_align, offset);
 	}
 
 	if (use_doublebuffer)

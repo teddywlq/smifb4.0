@@ -106,8 +106,6 @@ MODULE_PARM_DESC(clkphase, "Panel Mode Clock phase, -1 = Use Mode table (Default
 module_param_named(clkphase, clk_phase, int, 0400);
 MODULE_PARM_DESC(vblank, "Disable/Enable hw vblank support");
 module_param_named(vblank, use_vblank, int, 0400);
-MODULE_PARM_DESC(doublebuffer, "Disable/Enable double buffer");
-module_param_named(doublebuffer, use_doublebuffer, int, 0400);
 
 /*
  * This is the generic driver code. This binds the driver to the drm core,

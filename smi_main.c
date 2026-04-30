@@ -117,6 +117,9 @@ int smi_driver_load(struct drm_device *dev, unsigned long flags)
 #endif
 		smi_pwm_init(dev);	
 
+#ifdef USE_LT8618
+		hw768_init_lt8618();
+#endif
 	}
 	else if(cdev->specId == SPC_SM770){
 		ddk770_initChip();

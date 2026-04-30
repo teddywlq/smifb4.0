@@ -493,6 +493,11 @@ static void smi_crtc_mode_set_nofb(struct drm_crtc *crtc)
 			}	
 		}
 		
+#ifdef USE_LT8618
+	    if((sdev->m_connector & USE_DVI) && dst_ctrl == 0){
+			hw768_lt8618TaskWork(logicalMode.x, logicalMode.y);
+		}
+#endif			
 		
 		
 		
@@ -1363,6 +1368,10 @@ static enum drm_mode_status smi_connector_mode_valid(struct drm_connector *conne
 		return MODE_NOMODE;
 
 	if(connector->connector_type == DRM_MODE_CONNECTOR_DVII){
+#ifdef USE_LT8618
+	    if(lt8618_SupportModeValid(mode->hdisplay, mode->vdisplay, vrefresh))
+				return MODE_NOMODE;
+#endif
 		if(mode->clock >= 200000)
 				return MODE_NOCLOCK;
 	}
@@ -1379,13 +1388,16 @@ static enum drm_mode_status smi_connector_mode_valid(struct drm_connector *conne
 	}
 
 	}else{
-			if((mode->hdisplay > 3840) || (mode->vdisplay > 2160) || (mode->clock > 600000))
-				return MODE_NOMODE;
-			if(mode->clock >=300000 && (count_set_bits(sdev->m_connector) > 2))  //SM770 can't support triple 4k@60hz
-				return MODE_NOCLOCK;
-			//For Xorg, if sram is 256Mb, can not support triple 4k@30hz
-			if((sdev->vram_size == MB(256)) &&  (mode->clock >= 250000) && (count_set_bits(sdev->m_connector) > 2))
-				return MODE_NOMODE;
+			if((count_set_bits(sdev->m_connector) > 2)){
+				//Limit the resolution above 4K 30Hz
+				if((mode->hdisplay >= 3840) && (mode->vdisplay >= 2160) && (vrefresh > 30))
+					return MODE_NOMODE;
+			}else{
+				//Limit the resolution above 4K 60Hz
+				if((mode->hdisplay >= 3840) && (mode->vdisplay >= 2160) && (vrefresh > 60))
+					return MODE_NOMODE;
+			}
+			
 	}
 		
 
