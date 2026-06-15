@@ -4,6 +4,7 @@
 #include "smi_drv.h"
 #include <linux/console.h>
 #include <linux/module.h>
+#include <linux/delay.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 11, 0)
 #include <drm/drm_fbdev_ttm.h>
@@ -585,6 +586,7 @@ irqreturn_t smi_hdmi0_pnp_handler(int irq, void *dev_id)
 
 	dev = dev_id;
 	sdev = dev->dev_private;
+	msleep(1500);
 	monitor_status = hw770_hdmi_detect(0);
 	if(!monitor_status)
 	{
@@ -618,9 +620,7 @@ irqreturn_t smi_hdmi0_pnp_handler(int irq, void *dev_id)
 	logicalMode.pitch = 0;
 	logicalMode.dispCtrl = 0;
 
-	if (monitor_status)
-	{
-		dbg_msg("HDMI0: Monitor status is $%d\n", monitor_status);
+	dbg_msg("HDMI0 reset mode: Monitor status is 0x%x\n", monitor_status);
 		hw770_setMode(&logicalMode, *mode);
 		ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[0], INDEX_HDMI0);
 		if (ret != 0)
@@ -629,7 +629,7 @@ irqreturn_t smi_hdmi0_pnp_handler(int irq, void *dev_id)
 			goto error;
 		}
 		hw770_set_current_pitch((disp_control_t)INDEX_HDMI0,&fb_info);
-	}
+	
 	return IRQ_HANDLED;
 error:
 	return IRQ_HANDLED;
@@ -651,6 +651,7 @@ irqreturn_t smi_hdmi1_pnp_handler(int irq, void *dev_id)
 
 	dev = dev_id;
 	sdev = dev->dev_private;
+	msleep(1500);
 	monitor_status = hw770_hdmi_detect(1);
 	if(!monitor_status)
 	{
@@ -684,9 +685,8 @@ irqreturn_t smi_hdmi1_pnp_handler(int irq, void *dev_id)
 	logicalMode.pitch = 0;
 	logicalMode.dispCtrl = 1;
 
-	if (monitor_status)
-	{
-		dbg_msg("HDMI1: Monitor status is $%d\n", monitor_status);
+	
+	dbg_msg("HDMI1 reset mode: Monitor status is 0x%x\n", monitor_status);
 		hw770_setMode(&logicalMode, *mode);
 		ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[1], INDEX_HDMI1);
 		if (ret != 0)
@@ -695,7 +695,7 @@ irqreturn_t smi_hdmi1_pnp_handler(int irq, void *dev_id)
 			goto error;
 		}
 		hw770_set_current_pitch((disp_control_t)INDEX_HDMI1,&fb_info);
-	}
+	
 	return IRQ_HANDLED;
 error:
 	return IRQ_HANDLED;
@@ -716,6 +716,7 @@ irqreturn_t smi_hdmi2_pnp_handler(int irq, void *dev_id)
 
 	dev = dev_id;
 	sdev = dev->dev_private;
+	msleep(1500);
 	monitor_status = hw770_hdmi_detect(2);
 	if(!monitor_status)
 	{
@@ -750,9 +751,8 @@ irqreturn_t smi_hdmi2_pnp_handler(int irq, void *dev_id)
 	logicalMode.dispCtrl = 2;
 
 
-	if (monitor_status)
-	{
-		dbg_msg("HDMI2: Monitor status is $%d\n", monitor_status);
+	
+	dbg_msg("HDMI2 reset mode: Monitor status is 0x%x\n", monitor_status);
 		hw770_setMode(&logicalMode, *mode);
 		ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[2], INDEX_HDMI2);
 		if (ret != 0)
@@ -761,7 +761,7 @@ irqreturn_t smi_hdmi2_pnp_handler(int irq, void *dev_id)
 			goto error;
 		}
 		hw770_set_current_pitch((disp_control_t)INDEX_HDMI2,&fb_info);
-	}
+	
 	return IRQ_HANDLED;
 error:
 	return IRQ_HANDLED;

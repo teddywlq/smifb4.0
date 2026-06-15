@@ -349,7 +349,9 @@ static struct snd_kcontrol_new falconi2s_vol[] = {
   
 /* hardware definition */
 static struct snd_pcm_hardware snd_falconi2s_playback_hw = {
-	.info = (SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+	.info = (SNDRV_PCM_INFO_MMAP |
+                   SNDRV_PCM_INFO_INTERLEAVED |
+                   SNDRV_PCM_INFO_BLOCK_TRANSFER |
 		 SNDRV_PCM_INFO_MMAP_VALID),
 	.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	//this value means both of 44100 and 48000 can work
@@ -368,7 +370,9 @@ static struct snd_pcm_hardware snd_falconi2s_playback_hw = {
 
 /* hardware definition */
 static struct snd_pcm_hardware snd_falconi2s_capture_hw = {
-	.info = (SNDRV_PCM_INFO_MMAP | SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
+	.info = (SNDRV_PCM_INFO_MMAP |
+                   SNDRV_PCM_INFO_INTERLEAVED |
+                   SNDRV_PCM_INFO_BLOCK_TRANSFER |
 		 SNDRV_PCM_INFO_MMAP_VALID),
 	.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	.rates = SNDRV_PCM_RATE_48000,
@@ -605,50 +609,65 @@ static int snd_falconi2s_dev_free(struct snd_device *device)
 
 static int snd_smi_play_copy_data(struct sm768chip *chip,int sramTxSection)
 {
-		
-	struct snd_pcm_runtime *play_runtime;
 	struct snd_pcm_substream *play_substream;
+	struct snd_pcm_runtime *play_runtime;
 
 	play_substream = chip->play_substream;
 
-	if(play_substream == NULL)
-		memset32((void *)((unsigned long)chip->pvReg + SRAM_OUTPUT_BASE) + SRAM_SECTION_SIZE * sramTxSection, 0x00, P_PERIOD_BYTE/4);
-	else{
-		play_runtime = play_substream->runtime;
+	if (play_substream == NULL) {
+		memset32((void *)((unsigned long)chip->pvReg + SRAM_OUTPUT_BASE) +
+			 SRAM_SECTION_SIZE * sramTxSection, 0x00, P_PERIOD_BYTE / 4);
+		return 0;
+	}
+
+	if (!snd_pcm_running(play_substream)) {
+		return 0;
+	}
+	play_runtime = play_substream->runtime;
 
 		if (play_runtime->dma_area == NULL) 
 			return 0;
 
-		memcpy32_toio(chip->pvReg + SRAM_OUTPUT_BASE + SRAM_SECTION_SIZE * sramTxSection, play_runtime->dma_area + chip->ppointer, P_PERIOD_BYTE);	
+	if (play_runtime->dma_bytes == 0)
+		return 0;
+	memcpy32_toio(chip->pvReg + SRAM_OUTPUT_BASE + SRAM_SECTION_SIZE * sramTxSection,
+		      play_runtime->dma_area + chip->ppointer, P_PERIOD_BYTE);
 		chip->ppointer+= P_PERIOD_BYTE;
-		chip->ppointer%= ((play_runtime->periods) * (P_PERIOD_BYTE));
+	chip->ppointer %= play_runtime->dma_bytes;
 		snd_pcm_period_elapsed(play_substream);
-	}
 	return 0;
 }
 
 static int snd_smi_capture_copy_data(struct sm768chip *chip,int sramTxSection)
 {
-		
-	struct snd_pcm_runtime *capture_runtime;
 	struct snd_pcm_substream *capture_substream;
+	struct snd_pcm_runtime *capture_runtime;
 
 	capture_substream = chip->capture_substream;
 
-	if(capture_substream == NULL)	
-		memset32((void *)((unsigned long)chip->pvReg + SRAM_INPUT_BASE + SRAM_SECTION_SIZE * sramTxSection), 0x00,  P_PERIOD_BYTE/4);
+	if (capture_substream == NULL) {
+		memset32((void *)((unsigned long)chip->pvReg + SRAM_INPUT_BASE +
+			 SRAM_SECTION_SIZE * sramTxSection), 0x00, P_PERIOD_BYTE / 4);
+		return 0;
+	}
 		
-	else{
-		capture_runtime = capture_substream->runtime;
+	if (!snd_pcm_running(capture_substream)) {
+		return 0;
+	}
+	capture_runtime = capture_substream->runtime;
 
 		if (capture_runtime->dma_area == NULL) 
 			return 0;
 
-		memcpy32_fromio(capture_runtime->dma_area + chip->cpointer, chip->pvReg + SRAM_INPUT_BASE + SRAM_SECTION_SIZE * sramTxSection,  P_PERIOD_BYTE);
+	if (capture_runtime->dma_bytes == 0)
+		return 0;
+
+	memcpy32_fromio(capture_runtime->dma_area + chip->cpointer,
+			chip->pvReg + SRAM_INPUT_BASE + SRAM_SECTION_SIZE * sramTxSection,
+			P_PERIOD_BYTE);
 		chip->cpointer+= P_PERIOD_BYTE;
-		chip->cpointer%= ((capture_runtime->periods) * (P_PERIOD_BYTE));		
+	chip->cpointer %= capture_runtime->dma_bytes;
 		snd_pcm_period_elapsed(capture_substream);
-	}
 	return 0;
 }
 
@@ -661,32 +680,24 @@ static irqreturn_t snd_smi770_interrupt(int irq, void *dev_id)
 	
 	struct sm768chip *chip = dev_id;
 
-	int sramTxSection = 0; 
+	int sramTxSection;
 
-	if(hw770_check_iis_interrupt())
-	{
-		unsigned long iParameter = 0;
-
-		ddk770_iisClearRawInt(); //clear int
-
-		iParameter = ddk770_iisDmaPointer();
-		
-		//SRAM is logically divided into 2 portions (1024 byte each)
-		//Check I2S DMA pointer to find out which portion is active.
-		if(iParameter >= 255)
-			//Fill top half SRAM if lower half is active
-			sramTxSection = 0;
-		else
-			//Fill lower half SRAM if top half is active
-			sramTxSection = 1;
-
-		snd_smi_play_copy_data(chip,sramTxSection);   
-		snd_smi_capture_copy_data(chip,sramTxSection);
-
-		return IRQ_HANDLED;
-	}
-	else
+	if (chip == NULL)
 		return IRQ_NONE;
+	if (!hw770_check_iis_interrupt()) {
+		return IRQ_NONE;
+	}
+	ddk770_iisClearRawInt(); //clear int
+
+	/* SRAM is logically divided into 2 portions (1024 byte each).
+	 * Check I2S DMA pointer to find out which portion is active.
+	 */
+	sramTxSection = (ddk770_iisDmaPointer() >= 255) ? 0 : 1;
+
+	snd_smi_play_copy_data(chip, sramTxSection);
+	snd_smi_capture_copy_data(chip, sramTxSection);
+
+	return IRQ_HANDLED;
 }
 
 
@@ -697,36 +708,27 @@ static irqreturn_t snd_smi770_interrupt(int irq, void *dev_id)
  */
 static irqreturn_t snd_smi_interrupt(int irq, void *dev_id)
 {
-	
 	struct sm768chip *chip = dev_id;
+	int sramTxSection;
 
-	int sramTxSection = 0; 
-
-	if(hw768_check_iis_interrupt())
-	{
-		unsigned long iParameter = 0;
-		iisClearRawInt(); //clear int
-
-		iParameter = iisDmaPointer();
-		
-		//SRAM is logically divided into 2 portions (1024 byte each)
-		//Check I2S DMA pointer to find out which portion is active.
-		if(iParameter >= 255)
-			//Fill top half SRAM if lower half is active
-			sramTxSection = 0;
-		else
-			//Fill lower half SRAM if top half is active
-			sramTxSection = 1;
-
-		snd_smi_play_copy_data(chip,sramTxSection);   
-		snd_smi_capture_copy_data(chip,sramTxSection);
-
-		return IRQ_HANDLED;
-	}
-	else
+	if (chip == NULL)
 		return IRQ_NONE;
-}
 
+	if (!hw768_check_iis_interrupt())
+		return IRQ_NONE;
+
+	iisClearRawInt();
+
+	/* SRAM is logically divided into 2 portions (1024 byte each).
+	 * Check I2S DMA pointer to find out which portion is active.
+	 */
+	sramTxSection = (iisDmaPointer() >= 255) ? 0 : 1;
+
+	snd_smi_play_copy_data(chip, sramTxSection);
+	snd_smi_capture_copy_data(chip, sramTxSection);
+
+	return IRQ_HANDLED;
+}
   /* chip-specific constructor
    * (see "Management of Cards and Components")
    */

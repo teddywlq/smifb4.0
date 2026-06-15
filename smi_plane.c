@@ -127,7 +127,7 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	int ret;
 	ret = drm_gem_shmem_vmap(fb->obj[0],&map);
 #else
-	const u8 *src = drm_gem_shmem_vmap(fb->obj[0]);
+	void *src = drm_gem_shmem_vmap(fb->obj[0]);
 #endif
 #else
 	struct drm_shadow_plane_state *shadow_plane_state = to_drm_shadow_plane_state(plane_state);

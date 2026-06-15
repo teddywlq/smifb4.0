@@ -832,7 +832,63 @@ free_mem:
 	return NULL;
 }
 
+void smi_HdmiDpmsSetMode(struct smi_device *sdev, struct drm_encoder *encoder, hdmi_index hdmi_index)
+{
+	struct drm_display_mode *mode;
+	logicalMode_t logicalMode;
+	unsigned long refresh_rate;
+	struct drm_crtc *crtc;
+	int monitor_status = 0;
+	int ret = 0;
+	struct edid * hdmi_edid= NULL;
 
+	monitor_status = hw770_hdmi_detect(hdmi_index);
+	if((monitor_status & 0x01) && !(monitor_status & 0x02)){
+		crtc = encoder->crtc;
+		mode = &crtc->state->adjusted_mode;
+
+		if(!mode)
+			return;
+
+		refresh_rate = drm_mode_vrefresh(mode);
+		logicalMode.valid_edid = false;
+
+		switch(hdmi_index){
+			case INDEX_HDMI0:
+				hdmi_edid = sdev->hdmi0_edid;
+				break;
+			
+			case INDEX_HDMI1:
+				hdmi_edid = sdev->hdmi1_edid;
+				break;
+
+			case INDEX_HDMI2:
+				hdmi_edid = sdev->hdmi2_edid;
+				break;
+
+			default:
+				hdmi_edid = NULL;
+				break;
+
+		}
+		if (hdmi_edid && drm_edid_header_is_valid((u8 *)hdmi_edid) == 8)
+			logicalMode.valid_edid = true;
+
+		logicalMode.x = mode->hdisplay;
+		logicalMode.y = mode->vdisplay;
+		logicalMode.bpp = smi_bpp;
+		logicalMode.hz = refresh_rate;
+		logicalMode.pitch = 0;
+		logicalMode.dispCtrl = hdmi_index;
+
+		ret = hw770_set_hdmi_mode(&logicalMode, *mode, true, hdmi_index);
+		if (ret != 0)
+		{
+			dbg_msg("HDMI Mode not supported!\n");
+		}
+		
+	}
+}
 
 static void smi_encoder_mode_set(struct drm_encoder *encoder,
 				struct drm_display_mode *mode,
@@ -844,6 +900,7 @@ static void smi_encoder_dpms(struct drm_encoder *encoder, int mode)
 {
 	int index =0, i;
 	struct smi_device *sdev = encoder->dev->dev_private;
+	int hdmi_ConnectStatus = 0;
 
 	ENTER();
 	if (sdev->specId == SPC_SM750 || sdev->specId == SPC_SM768)
@@ -946,6 +1003,13 @@ static void smi_encoder_dpms(struct drm_encoder *encoder, int mode)
 			dbg_msg("DC %d 770 dpms on\n", index);
 			ddk770_setDisplayDPMS(index, DISP_DPMS_ON);
 			ddk770_swPanelPowerSequence(index, 1, index, 4);
+			if(sdev->is_hdmi[index]){
+				hdmi_ConnectStatus = ddk770_HDMI_HPD_Detect(index);
+				if((hdmi_ConnectStatus & 0x01) && !(hdmi_ConnectStatus & 0x02)){
+					dbg_msg("dpms reset hdmi%d mode \n", index);
+					smi_HdmiDpmsSetMode(sdev, encoder, index);
+				}
+			}
 		}
 		
 	}
