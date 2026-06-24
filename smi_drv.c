@@ -181,6 +181,8 @@ static int smi_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (ret)
 		return ret;
 
+	pci_set_master(pdev);
+	pcie_set_readrq(pdev, 4096);
 	dev = drm_dev_alloc(&driver, &pdev->dev);
 	if (IS_ERR(dev)) {
 		ret = PTR_ERR(dev);

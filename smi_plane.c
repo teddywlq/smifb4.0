@@ -15,6 +15,7 @@
 #include <drm/drm_format_helper.h>
 #include <drm/drm_gem_shmem_helper.h>
 
+#include <linux/kernel.h>
 
 
 #include <drm/drm_simple_kms_helper.h>
@@ -43,7 +44,7 @@
 
 
 __attribute__((unused)) static void colorcur2monocur(void *data);
-__attribute__((unused)) static spinlock_t buffer_lock;
+static DEFINE_SPINLOCK(buffer_lock);
 
 static const uint32_t smi_cursor_plane_formats[] = { DRM_FORMAT_RGB565, DRM_FORMAT_BGR565,
 						     DRM_FORMAT_ARGB8888 };
@@ -134,6 +135,12 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	struct iosys_map src_map = shadow_plane_state->data[0];
 	const u8 *src = src_map.vaddr;
 #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
+	struct drm_plane_state *old_cursor_state = drm_atomic_get_old_plane_state(state, plane);
+#else
+	struct drm_plane_state *old_cursor_state = plane_old_state;
+#endif
+	int fb_changed = !old_cursor_state || old_cursor_state->fb != plane_state->fb;
 
 	max_enc = MAX_ENCODER(sdev->specId);
 	for(i = 0;i < max_enc; i++)
@@ -166,17 +173,22 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 	dst = (smi_plane->vaddr_base + dst_off);
 	//printk("smi_cursor_atomic_update() disp_ctrl %d, fb->width %d, fb->height %d cpp %d\n", disp_ctrl, fb->width, fb->height, fb->format->cpp[0]);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 18, 0)
+	if (fb_changed)
 	memcpy_toio(dst, src, fb->width * fb->height * fb->format->cpp[0]);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,15,61)
+	if (fb_changed)
 	memcpy_toio(dst, map.vaddr, fb->width * fb->height * fb->format->cpp[0]);
 	drm_gem_shmem_vunmap(shem,&map);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0)
+	if (fb_changed)
 	memcpy_toio(dst, map.vaddr, fb->width * fb->height * fb->format->cpp[0]);
 	drm_gem_shmem_vunmap(fb->obj[0],&map);
 #else
+	if (fb_changed)
 	memcpy_toio(dst, src, fb->width * fb->height * fb->format->cpp[0]);
 	drm_gem_shmem_vunmap(fb->obj[0],src);
 #endif
+	if (fb_changed) {
 	if (sdev->specId == SPC_SM750) {
 			ddk750_initCursor(disp_ctrl, (u32)dst_off, BPP16_BLACK,
 				BPP16_WHITE, BPP16_BLUE);
@@ -191,6 +203,7 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 			ddk770_initCursor(disp_ctrl, (u32)dst_off, BPP32_BLACK, BPP32_WHITE,
 			 		  BPP32_BLUE);
 			ddk770_enableCursor(disp_ctrl, 3);
+		}
 		}
 	
 
@@ -323,7 +336,7 @@ static void smi_handle_damage(struct smi_plane *smi_plane, struct drm_plane_stat
 	};
 	unsigned int width = crtc->state->adjusted_mode.hdisplay;
 	unsigned int mode_pitch = alignLineOffset(width * fb->format->cpp[0]);
-	clip_offset =  (clip->x1 - plane_visbleX) * 4 + (clip->y1 - plane_visbleY) * mode_pitch;
+	clip_offset =  (clip->x1 - plane_visbleX) * fb->format->cpp[0] + (clip->y1 - plane_visbleY) * mode_pitch;
 	dst_pitch[0] = mode_pitch;
 	if(use_doublebuffer)
 		back_buffer = ((smi_plane->current_buffer == 1) ? smi_plane->vaddr_back : smi_plane->vaddr_front) + smi_plane->align;
@@ -496,15 +509,19 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 	}
 
 
-	fb->pitches[0] = (fb->pitches[0] + 15) & ~15;
+	if (sdev->specId == SPC_SM770) {
 	pitch_align = alignLineOffset(crtc->state->adjusted_mode.hdisplay * fb->format->cpp[0]);
+	}else{
+		pitch_align = ALIGN(crtc->state->adjusted_mode.hdisplay * fb->format->cpp[0], 16);
+	}
 	//printk("->index %d ,dst_addr:%x pitch is %x , fb_size:%d\n", disp_ctrl, dst_off, fb->pitches[0], fb->width);
 	
 	x = (plane_state->src_x >> 16);
 	y = (plane_state->src_y >> 16);
 	
 	if (use_doublebuffer)
-		offset = dst_off +smi_plane->current_buffer * buffer_size+ y * fb->pitches[0] + x * fb->format->cpp[0] + smi_plane->align;
+		offset = dst_off + smi_plane->current_buffer * buffer_size + y * ALIGN(fb->pitches[0], 16) +
+			 x * fb->format->cpp[0] + smi_plane->align;
 	else
 	   offset = dst_off;
 	//offset = dst_off + y * fb->pitches[0] + x * fb->format->cpp[0] + smi_plane->align;
@@ -519,12 +536,19 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 		hw770_set_base(disp_ctrl, pitch_align, offset);
 	}
 
-	if (use_doublebuffer)
-	{
+	if (use_doublebuffer) {
 	    // Swap buffers with synchronization
 		spin_lock(&buffer_lock);
 		smi_plane->current_buffer = 1 - smi_plane->current_buffer;
 		spin_unlock(&buffer_lock);
+		drm_atomic_helper_damage_iter_init(&iter, old_plane_state, plane_state);
+		drm_atomic_for_each_plane_damage(&iter, &damage) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+			smi_handle_damage(smi_plane, plane_state, shadow_plane_state->data, fb, &damage);
+#else
+			smi_handle_damage(smi_plane, plane_state, fb, &damage);
+#endif
+		}
 	}
 	return;
 }
