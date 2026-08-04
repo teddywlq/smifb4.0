@@ -271,7 +271,7 @@ static int smi_vram_init(struct smi_device *cdev)
 	if (cdev->specId == SPC_SM750)
 		cdev->vram_size = ddk750_getFrameBufSize();
 	else if(cdev->specId == SPC_SM768)
-		cdev->vram_size = ddk768_getFrameBufSize();
+		cdev->vram_size = pci_resource_len(pdev, 0);
 	else if (cdev->specId == SPC_SM770)
 	{
 		cdev->vram_size = ddk770_getFrameBufSize();
