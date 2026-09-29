@@ -684,6 +684,8 @@ static void smi_crtc_atomic_enable(struct drm_crtc *crtc,
 
 	}
 
+	if (use_vblank)
+		drm_crtc_vblank_on(crtc);
 }
 
 static void smi_crtc_atomic_disable(struct drm_crtc *crtc, 
@@ -694,6 +696,8 @@ static void smi_crtc_atomic_disable(struct drm_crtc *crtc,
 #endif
 {
 	struct smi_device *sdev = crtc->dev->dev_private;
+	if (use_vblank)
+		drm_crtc_vblank_off(crtc);
 			
 	if (sdev->specId == SPC_SM770){
 
@@ -719,21 +723,34 @@ static void smi_crtc_atomic_disable(struct drm_crtc *crtc,
 static int smi_enable_vblank(struct drm_crtc *crtc)
 {
 	struct smi_device *sdev = crtc->dev->dev_private;
+	int ret;
 
 	if (sdev->specId == SPC_SM750) {
-		hw750_en_dis_interrupt(1);
+		hw750_en_dis_interrupt(0);
+		hw750_clear_vsync_interrupt(CHANNEL0_CTRL);
+		hw750_clear_vsync_interrupt(CHANNEL1_CTRL);
+		ret = hw750_en_dis_interrupt(1);
 	} else if (sdev->specId == SPC_SM768) {
-		hw768_en_dis_interrupt(1);
+		hw768_en_dis_interrupt(0);
+		hw768_clear_vsync_interrupt(CHANNEL0_CTRL);
+		hw768_clear_vsync_interrupt(CHANNEL1_CTRL);
+		ret = hw768_en_dis_interrupt(1);
 	} else if (sdev->specId == SPC_SM770) {
-		hw770_en_dis_interrupt(1);
+		hw770_en_dis_interrupt(0);
+		hw770_clear_vsync_interrupt(CHANNEL0_CTRL);
+		hw770_clear_vsync_interrupt(CHANNEL1_CTRL);
+		hw770_clear_vsync_interrupt(CHANNEL2_CTRL);
+		ret = hw770_en_dis_interrupt(1);
+	} else {
+		return -ENODEV;
 	}
-	return 0;
+	return ret;
 }
 
 static void smi_disable_vblank(struct drm_crtc *crtc)
 {
 	struct smi_device *sdev = crtc->dev->dev_private;
-	
+
 	if (sdev->specId == SPC_SM750) {
 		hw750_en_dis_interrupt(0);
 	} else if (sdev->specId == SPC_SM768) {
@@ -930,6 +947,7 @@ static void smi_encoder_dpms(struct drm_encoder *encoder, int mode)
 		if (mode == DRM_MODE_DPMS_OFF) {
 			dbg_msg("disable dpms, index=%d\n",index);
 			setDisplayControl(index, DISP_OFF); 
+			ddk750_enableCursor(index, 0);
 		}else
 		{
 			setDisplayControl(index, DISP_ON); 
@@ -980,6 +998,7 @@ static void smi_encoder_dpms(struct drm_encoder *encoder, int mode)
 		if (mode == DRM_MODE_DPMS_OFF){
 			setDisplayDPMS(index, DISP_DPMS_OFF);
 			ddk768_swPanelPowerSequence(index, 0, 4);
+			ddk768_enableCursor(index, 0);
 		}else{
 			setDisplayDPMS(index, DISP_DPMS_ON);
 			ddk768_swPanelPowerSequence(index, 1, 4);
@@ -999,6 +1018,7 @@ static void smi_encoder_dpms(struct drm_encoder *encoder, int mode)
 			dbg_msg("DC %d 770 dpms off\n", index);
 			ddk770_setDisplayDPMS(index, DISP_DPMS_OFF);
 			ddk770_swPanelPowerSequence(index, 0, index, 4);  
+			ddk770_enableCursor(index, 0);
 		}else{
 			dbg_msg("DC %d 770 dpms on\n", index);
 			ddk770_setDisplayDPMS(index, DISP_DPMS_ON);

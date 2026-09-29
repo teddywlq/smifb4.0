@@ -13,6 +13,7 @@ struct smi_770_register{
 	
 	uint32_t primary_display_ctrl[10], lvds_ctrl, primary_hwcurs_ctrl[4];
 	uint32_t secondary_display_ctrl[10], secondary_hwcurs_ctrl[4];
+    uint32_t third_display_ctrl[10], third_hwcurs_ctrl[4];
 };
 
 struct smi_770_fb_info{

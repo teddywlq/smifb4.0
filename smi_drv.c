@@ -90,7 +90,7 @@ MODULE_PARM_DESC(width, "Fixed mode width for LVDS or nopnp (default:0)");
 module_param_named(width, fixed_width, int, 0400);
 MODULE_PARM_DESC(height, "Fixed mode height for LVDS or nopnp (default:0)");
 module_param_named(height, fixed_height, int, 0400);
-MODULE_PARM_DESC(audio, "SM768/SM770 Audio, 0=diable 1=use UDA1345 Codec, 2=use WM8978 Codec(default:0), SM770 only support HDMI/DP Audio");
+MODULE_PARM_DESC(audio, "SM768/SM770 Audio, 0=disable, 1=HDMI/DP audio, 2=WM8978 codec, 3=UDA1345 codec (default:0); SM770 only supports HDMI/DP audio");
 module_param_named(audio, audio_en, int, 0400);
 MODULE_PARM_DESC(hwi2c, "HW I2C for EDID reading for SM750/SM768, 0=SW I2C 1=HW I2C(default:0)");
 module_param_named(hwi2c, hwi2c_en, int, 0400);
@@ -424,15 +424,24 @@ static int smi_pm_poweroff(struct device *dev)
 static int smi_enable_vblank(struct drm_device *dev, unsigned int pipe)
 {
 	struct smi_device *sdev = dev->dev_private;
+	int ret;
 	
 	if (sdev->specId == SPC_SM750) {
-		hw750_en_dis_interrupt(1, pipe);
+		hw750_en_dis_interrupt(0, pipe);
+		hw750_clear_vsync_interrupt(pipe);
+		ret = hw750_en_dis_interrupt(1, pipe);
 	} else if (sdev->specId == SPC_SM768) {
-		hw768_en_dis_interrupt(1, pipe);
+		hw768_en_dis_interrupt(0, pipe);
+		hw768_clear_vsync_interrupt(pipe);
+		ret = hw768_en_dis_interrupt(1, pipe);
 	}else if (sdev->specId == SPC_SM770) {
-		hw770_en_dis_interrupt(1, pipe);
+		hw770_en_dis_interrupt(0, pipe);
+		hw770_clear_vsync_interrupt(pipe);
+		ret = hw770_en_dis_interrupt(1, pipe);
+	} else {
+		return -ENODEV;
 	}
-	return 0;
+	return ret;
 }
 
 static void smi_disable_vblank(struct drm_device *dev, unsigned int pipe)
@@ -452,10 +461,38 @@ static void smi_disable_vblank(struct drm_device *dev, unsigned int pipe)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
 static void smi_irq_preinstall(struct drm_device *dev)
 {
-	// To Do....
-	/* Disable *all* interrupts */
+	struct smi_device *sdev = dev->dev_private;
 
-	/* Clear bits if they're already high */
+	if (sdev->specId == SPC_SM750) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+		hw750_en_dis_interrupt(0, CHANNEL0_CTRL);
+		hw750_en_dis_interrupt(0, CHANNEL1_CTRL);
+#else
+		hw750_en_dis_interrupt(0);
+#endif
+		hw750_clear_vsync_interrupt(CHANNEL0_CTRL);
+		hw750_clear_vsync_interrupt(CHANNEL1_CTRL);
+	} else if (sdev->specId == SPC_SM768) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+		hw768_en_dis_interrupt(0, CHANNEL0_CTRL);
+		hw768_en_dis_interrupt(0, CHANNEL1_CTRL);
+#else
+		hw768_en_dis_interrupt(0);
+#endif
+		hw768_clear_vsync_interrupt(CHANNEL0_CTRL);
+		hw768_clear_vsync_interrupt(CHANNEL1_CTRL);
+	} else if (sdev->specId == SPC_SM770) {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
+		hw770_en_dis_interrupt(0, CHANNEL0_CTRL);
+		hw770_en_dis_interrupt(0, CHANNEL1_CTRL);
+		hw770_en_dis_interrupt(0, CHANNEL2_CTRL);
+#else
+		hw770_en_dis_interrupt(0);
+#endif
+		hw770_clear_vsync_interrupt(CHANNEL0_CTRL);
+		hw770_clear_vsync_interrupt(CHANNEL1_CTRL);
+		hw770_clear_vsync_interrupt(CHANNEL2_CTRL);
+	}
 }
 
 static int smi_irq_postinstall(struct drm_device *dev)
@@ -487,38 +524,43 @@ irqreturn_t smi_drm_interrupt(DRM_IRQ_ARGS)
 	if (sdev->specId == SPC_SM750) {
 		if (hw750_check_vsync_interrupt(0)) {
 			/* Clear the panel VSync Interrupt */
+			hw750_clear_vsync_interrupt(0);
 			drm_handle_vblank(dev, 0);
 			handled = 1;
-			hw750_clear_vsync_interrupt(0);
 		}
 		if (hw750_check_vsync_interrupt(1)) {
+			hw750_clear_vsync_interrupt(1);
 			drm_handle_vblank(dev, 1);
 			handled = 1;
-			hw750_clear_vsync_interrupt(1);
 		}
 	} else if (sdev->specId == SPC_SM768) {
 		if (hw768_check_vsync_interrupt(0)) {
 			/* Clear the panel VSync Interrupt */
+			hw768_clear_vsync_interrupt(0);
 			drm_handle_vblank(dev, 0);
 			handled = 1;
-			hw768_clear_vsync_interrupt(0);
 		}
 		if (hw768_check_vsync_interrupt(1)) {
+			hw768_clear_vsync_interrupt(1);
 			drm_handle_vblank(dev, 1);
 			handled = 1;
-			hw768_clear_vsync_interrupt(1);
 		}
 	} else if(sdev->specId == SPC_SM770){
 		if (hw770_check_vsync_interrupt(0)) {
 			/* Clear the panel VSync Interrupt */
+			hw770_clear_vsync_interrupt(0);
 			drm_handle_vblank(dev, 0);
 			handled = 1;
-			hw770_clear_vsync_interrupt(0);
 		}
 		if (hw770_check_vsync_interrupt(1)) {
+			hw770_clear_vsync_interrupt(1);
 			drm_handle_vblank(dev, 1);
 			handled = 1;
-			hw770_clear_vsync_interrupt(1);
+		}
+		if (hw770_check_vsync_interrupt(2)) {
+			hw770_clear_vsync_interrupt(2);
+			drm_handle_vblank(dev, 2);
+			handled = 1;
 		}
 	}
 

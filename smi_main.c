@@ -134,6 +134,12 @@ int smi_driver_load(struct drm_device *dev, unsigned long flags)
 	if((cdev->specId == SPC_SM768 || cdev->specId == SPC_SM770) && audio_en)
 			smi_audio_init(dev);
 
+	dev->mode_config.funcs = (void *)&smi_mode_config_funcs;
+	r = smi_modeset_init(cdev);
+	if (r) {
+		DRM_ERROR("Fatal error during modeset init: %d\n", r);
+		goto out;
+	}
 	if (use_vblank) {
 		drm_vblank_init(dev, dev->mode_config.num_crtc);
 
@@ -147,12 +153,6 @@ int smi_driver_load(struct drm_device *dev, unsigned long flags)
 			DRM_ERROR("install irq failed , ret = %d\n", r);
 	}
 
-	dev->mode_config.funcs = (void *)&smi_mode_config_funcs;
-	r = smi_modeset_init(cdev);
-	if (r) {
-		DRM_ERROR("Fatal error during modeset init: %d\n", r);
-		goto out;
-	}
 #ifdef ENABLE_HDMI_IRQ
 	if (cdev->specId == SPC_SM770)
 	{

@@ -30,13 +30,19 @@
 
 #define DRIVER_NAME		"smifb"
 #define DRIVER_DESC		"SiliconMotion GPU DRM Driver"
-#define DRIVER_DATE		"20251230"
+#define DRIVER_DATE		"20260825"
 
 #define DRIVER_MAJOR		4
 #define DRIVER_MINOR		6
 #define DRIVER_PATCHLEVEL	0
 
 #define SMIFB_CONN_LIMIT 3
+enum smi_audio_mode {
+	SMI_AUDIO_DISABLED = 0,
+	SMI_AUDIO_HDMI = 1,
+	SMI_AUDIO_WM8978 = 2,
+	SMI_AUDIO_UDA1345 = 3,
+};
 
 
 
