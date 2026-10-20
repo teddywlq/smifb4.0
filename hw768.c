@@ -191,9 +191,28 @@ void hw768_init_lt8618(void)
 {
 	smi_lt8618Init();
 }
-int hw768_lt8618TaskWork(unsigned long width, unsigned long height)
+int hw768_lt8618TaskWork(struct smi_connector *connector,
+			unsigned long width, unsigned long height)
 {
-	return smi_lt8618SX_Task(width, height);
+	unsigned long gpio_mux;
+	unsigned char i2c_ctrl;
+	int ret;
+
+	/* LT8618 and DVI EDID share controller 0 and GPIOs 30/31. */
+	i2c_lock_bus(&connector->adapter, I2C_LOCK_ROOT_ADAPTER);
+	gpio_mux = peekRegisterDWord(GPIO_MUX);
+	i2c_ctrl = peekRegisterByte(I2C_CTRL);
+
+	ret = smi_lt8618SX_Task(width, height);
+
+	/* Restore the DDC bus without restarting the last I2C transfer. */
+	pokeRegisterByte(I2C_CTRL, FIELD_SET(i2c_ctrl, I2C_CTRL, CTRL, STOP));
+	pokeRegisterDWord(GPIO_MUX,
+		FIELD_VALUE(peekRegisterDWord(GPIO_MUX), GPIO_MUX, I2C0,
+			    FIELD_VAL_GET(gpio_mux, GPIO_MUX, I2C0)));
+	i2c_unlock_bus(&connector->adapter, I2C_LOCK_ROOT_ADAPTER);
+
+	return ret;
 }
 int lt8618_SupportModeValid(unsigned short width, unsigned short height, unsigned int vrefresh)
 {
@@ -497,6 +516,5 @@ long hw768_AdaptI2CCleanBus(struct drm_connector *connector)
         return ddk768_AdaptSWI2CCleanBus(smi_connector);
     }
 }
-
 
 

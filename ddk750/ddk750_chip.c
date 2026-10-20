@@ -202,7 +202,7 @@ long ddk750_initChipParamEx(initchip_param_t * pInitParam)
  *      This function initialize with a default set of parameters.
  *      Use initChipParam() if you don't want default parameters.
  */
-long ddk750_initChip()
+long ddk750_initChip(void)
 {
     initchip_param_t initParam;
     

@@ -568,7 +568,7 @@ long ddk770_HDMI_Read_EDID(hdmi_index index, u8 *pEDIDBuffer, u16* bufferSize)
 
     ddk770_HDMI_Check_EDID_IIC_State(index);
 
-	if(!ddk770_HDMI_HPD_Detect(index))
+	if (!(ddk770_HDMI_HPD_Detect(index) & SM770_HDMI_STATUS_HPD))
 	{
 		//not plug-in
 		// memset(pEDIDBuffer, 0, *bufferSize);
@@ -1237,7 +1237,7 @@ static int ddk770_hdmi_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
 	}
 	
 	ddk770_HDMI_Check_EDID_IIC_State(index);
-	if (!ddk770_HDMI_HPD_Detect(index)) {
+	if (!(ddk770_HDMI_HPD_Detect(index) & SM770_HDMI_STATUS_HPD)) {
 		ret = -ENODEV;
 		goto end;
 	}

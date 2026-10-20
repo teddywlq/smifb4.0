@@ -184,7 +184,7 @@ long ddk768_initChip(void)
     Program DDR PHY register PIR to do DDR training.
     Other parameters for training are assumed well set before calling here.
 */
-void ddrTraining()
+void ddrTraining(void)
 {
     unsigned long ulTmp;
 

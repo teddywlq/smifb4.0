@@ -85,29 +85,35 @@ void hw770_setDisplayPlaneDisableOnly(
 
 void hw770_suspend(struct smi_770_register * pSave)
 {
-	;
-	// int i;
+	int i;
 
-	// pSave->clock_enable = peekRegisterDWord(CLOCK_ENABLE);
-	// for (i = 0; i < 3; i++)
-	// 	pSave->pll_ctrl[i] = peekRegisterDWord(MCLK_PLL + i * 4);
+	pSave->clock_enable = peekRegisterDWord(CLOCK_ENABLE);
 
-	// for (i = 0; i < 10; i++)
-	// 	pSave->primary_display_ctrl[i] = peekRegisterDWord(DISPLAY_CTRL + i * 4);
-	// pSave->lvds_ctrl = peekRegisterDWord(LVDS_CTRL2);
-	// for (i = 0; i < 4; i++)
-	// 	pSave->primary_hwcurs_ctrl[i] = peekRegisterDWord(HWC_CONTROL + i * 4);
+	pSave->pll_ctrl[0] = peekRegisterDWord(VCLK_PLL);
+	pSave->pll_ctrl[1] = peekRegisterDWord(VCLK1_PLL);
+	pSave->pll_ctrl[2] = peekRegisterDWord(VCLK2_PLL);
 
-	// for (i = 0; i < 10; i++)
-	// 	pSave->secondary_display_ctrl[i] = peekRegisterDWord(0x8000 + DISPLAY_CTRL + i * 4);
-	// for (i = 0; i < 4; i++)
-	// 	pSave->secondary_hwcurs_ctrl[i] = peekRegisterDWord(0x8000 + HWC_CONTROL + i * 4);
+	for (i = 0; i < 10; i++)
+	 	pSave->primary_display_ctrl[i] = peekRegisterDWord(DISPLAY_CTRL + i * 4);
 
+	for (i = 0; i < 4; i++)
+	 	pSave->primary_hwcurs_ctrl[i] = peekRegisterDWord(HWC_CONTROL + i * 4);
+
+	for (i = 0; i < 10; i++)
+	 	pSave->secondary_display_ctrl[i] = peekRegisterDWord(0x8000 + DISPLAY_CTRL + i * 4);
+	for (i = 0; i < 4; i++)
+	 	pSave->secondary_hwcurs_ctrl[i] = peekRegisterDWord(0x8000 + HWC_CONTROL + i * 4);
+
+	for (i = 0; i < 10; i++)
+	 	pSave->third_display_ctrl[i] = peekRegisterDWord(0x18000 + DISPLAY_CTRL + i * 4);
+	for (i = 0; i < 4; i++)
+	 	pSave->third_hwcurs_ctrl[i] = peekRegisterDWord(0x18000 + HWC_CONTROL + i * 4);
 
 }
 
 void hw770_resume(struct smi_770_register * pSave)
 {
+	int i;
 	if (ddk770_GetChipRev() == CHIP_REV_AB) {
 		pokeRegisterDWord(0x130, 0x78000000);
 	}
@@ -116,22 +122,26 @@ void hw770_resume(struct smi_770_register * pSave)
 	hw770_init_hdmi();
 	hw770_init_dp();
 
-	// int i;
+	pokeRegisterDWord(CLOCK_ENABLE, pSave->clock_enable);
 
-	// pokeRegisterDWord(CLOCK_ENABLE, pSave->clock_enable);
-	// for (i = 0; i < 3; i++)
-	// 	pokeRegisterDWord(MCLK_PLL + i * 4, pSave->pll_ctrl[i]);
+	pokeRegisterDWord(VCLK_PLL, pSave->pll_ctrl[0]);
+	pokeRegisterDWord(VCLK1_PLL, pSave->pll_ctrl[1]);
+	pokeRegisterDWord(VCLK2_PLL, pSave->pll_ctrl[2]);
 
-	// for (i = 0; i < 10; i++)
-	// 	pokeRegisterDWord(DISPLAY_CTRL + i * 4, pSave->primary_display_ctrl[i]);
-	// pokeRegisterDWord(LVDS_CTRL2, pSave->lvds_ctrl);
-	// for (i = 0; i < 4; i++)
-	// 	pokeRegisterDWord(HWC_CONTROL + i * 4, pSave->primary_hwcurs_ctrl[i]);
+	 for (i = 0; i < 10; i++)
+	 	pokeRegisterDWord(DISPLAY_CTRL + i * 4, pSave->primary_display_ctrl[i]);
+	 for (i = 0; i < 4; i++)
+	 	pokeRegisterDWord(HWC_CONTROL + i * 4, pSave->primary_hwcurs_ctrl[i]);
 
-	// for (i = 0; i < 10; i++)
-	// 	pokeRegisterDWord(0x8000 + DISPLAY_CTRL + i * 4, pSave->secondary_display_ctrl[i]);
-	// for (i = 0; i < 4; i++)
-	// 	pokeRegisterDWord(0x8000 + HWC_CONTROL + i * 4, pSave->secondary_hwcurs_ctrl[i]);
+	 for (i = 0; i < 10; i++)
+	 	pokeRegisterDWord(0x8000 + DISPLAY_CTRL + i * 4, pSave->secondary_display_ctrl[i]);
+	 for (i = 0; i < 4; i++)
+	 	pokeRegisterDWord(0x8000 + HWC_CONTROL + i * 4, pSave->secondary_hwcurs_ctrl[i]);
+
+	for (i = 0; i < 10; i++)
+	 	pokeRegisterDWord(0x18000 + DISPLAY_CTRL + i * 4, pSave->third_display_ctrl[i]);
+	for (i = 0; i < 4; i++)
+	 	pokeRegisterDWord(0x18000 + HWC_CONTROL + i * 4, pSave->third_hwcurs_ctrl[i]);
 
 }
 void hw770_set_base(disp_control_t dispControl,int pitch,int base_addr)
@@ -280,7 +290,7 @@ int hw770_en_dis_interrupt(int status)
 	}
 	pokeRegisterDWord(INT_MASK, mask);
 	return 0;
-	}
+}
 
 #endif
 

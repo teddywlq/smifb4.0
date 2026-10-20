@@ -196,7 +196,7 @@ void *getFrameBufAddress(unsigned long offset /*Offset from base of frame buffer
 /*
  * How many devices of the same ID are there.
  */
-unsigned short getNumOfDevices()
+unsigned short getNumOfDevices(void)
 {
     return gwNumOfDev;
 }

@@ -183,6 +183,7 @@ static int smi_pci_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	pci_set_master(pdev);
 	pcie_set_readrq(pdev, 4096);
+
 	dev = drm_dev_alloc(&driver, &pdev->dev);
 	if (IS_ERR(dev)) {
 		ret = PTR_ERR(dev);
@@ -630,13 +631,15 @@ irqreturn_t smi_hdmi0_pnp_handler(int irq, void *dev_id)
 
 	dev = dev_id;
 	sdev = dev->dev_private;
+	
 	msleep(1500);
 	monitor_status = hw770_hdmi_detect(0);
-	if(!monitor_status)
+	if (!(monitor_status & SM770_HDMI_STATUS_HPD))
 	{
 		drm_kms_helper_hotplug_event(dev);
 		return IRQ_HANDLED;
 	}
+	
 	crtc0 = sdev->smi_enc_tab[2]->crtc;
 	if (crtc0) {
 		dbg_msg("CRTC0 found: %p\n", crtc0);
@@ -665,14 +668,14 @@ irqreturn_t smi_hdmi0_pnp_handler(int irq, void *dev_id)
 	logicalMode.dispCtrl = 0;
 
 	dbg_msg("HDMI0 reset mode: Monitor status is 0x%x\n", monitor_status);
-		hw770_setMode(&logicalMode, *mode);
-		ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[0], INDEX_HDMI0);
-		if (ret != 0)
-		{
-			dbg_msg("HDMI Mode not supported!\n");
-			goto error;
-		}
-		hw770_set_current_pitch((disp_control_t)INDEX_HDMI0,&fb_info);
+	hw770_setMode(&logicalMode, *mode);
+	ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[0], INDEX_HDMI0);
+	if (ret != 0)
+	{
+		dbg_msg("HDMI Mode not supported!\n");
+		goto error;
+	}
+	hw770_set_current_pitch((disp_control_t)INDEX_HDMI0,&fb_info);
 	
 	return IRQ_HANDLED;
 error:
@@ -697,7 +700,7 @@ irqreturn_t smi_hdmi1_pnp_handler(int irq, void *dev_id)
 	sdev = dev->dev_private;
 	msleep(1500);
 	monitor_status = hw770_hdmi_detect(1);
-	if(!monitor_status)
+	if (!(monitor_status & SM770_HDMI_STATUS_HPD))
 	{
 		drm_kms_helper_hotplug_event(dev);
 		return IRQ_HANDLED;
@@ -731,14 +734,14 @@ irqreturn_t smi_hdmi1_pnp_handler(int irq, void *dev_id)
 
 	
 	dbg_msg("HDMI1 reset mode: Monitor status is 0x%x\n", monitor_status);
-		hw770_setMode(&logicalMode, *mode);
-		ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[1], INDEX_HDMI1);
-		if (ret != 0)
-		{
-			dbg_msg("HDMI Mode not supported!\n");
-			goto error;
-		}
-		hw770_set_current_pitch((disp_control_t)INDEX_HDMI1,&fb_info);
+	hw770_setMode(&logicalMode, *mode);
+	ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[1], INDEX_HDMI1);
+	if (ret != 0)
+	{
+		dbg_msg("HDMI Mode not supported!\n");
+		goto error;
+	}
+	hw770_set_current_pitch((disp_control_t)INDEX_HDMI1,&fb_info);
 	
 	return IRQ_HANDLED;
 error:
@@ -762,7 +765,7 @@ irqreturn_t smi_hdmi2_pnp_handler(int irq, void *dev_id)
 	sdev = dev->dev_private;
 	msleep(1500);
 	monitor_status = hw770_hdmi_detect(2);
-	if(!monitor_status)
+	if (!(monitor_status & SM770_HDMI_STATUS_HPD))
 	{
 		drm_kms_helper_hotplug_event(dev);
 		return IRQ_HANDLED;
@@ -793,18 +796,16 @@ irqreturn_t smi_hdmi2_pnp_handler(int irq, void *dev_id)
 	logicalMode.hz = refresh_rate;
 	logicalMode.pitch = 0;
 	logicalMode.dispCtrl = 2;
-
-
 	
 	dbg_msg("HDMI2 reset mode: Monitor status is 0x%x\n", monitor_status);
-		hw770_setMode(&logicalMode, *mode);
-		ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[2], INDEX_HDMI2);
-		if (ret != 0)
-		{
-			dbg_msg("HDMI Mode not supported!\n");
-			goto error;
-		}
-		hw770_set_current_pitch((disp_control_t)INDEX_HDMI2,&fb_info);
+	hw770_setMode(&logicalMode, *mode);
+	ret = hw770_set_hdmi_mode(&logicalMode, *mode, sdev->is_hdmi[2], INDEX_HDMI2);
+	if (ret != 0)
+	{
+		dbg_msg("HDMI Mode not supported!\n");
+		goto error;
+	}
+	hw770_set_current_pitch((disp_control_t)INDEX_HDMI2,&fb_info);
 	
 	return IRQ_HANDLED;
 error:

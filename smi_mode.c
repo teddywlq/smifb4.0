@@ -495,7 +495,12 @@ static void smi_crtc_mode_set_nofb(struct drm_crtc *crtc)
 		
 #ifdef USE_LT8618
 	    if((sdev->m_connector & USE_DVI) && dst_ctrl == 0){
-			hw768_lt8618TaskWork(logicalMode.x, logicalMode.y);
+			int ret = hw768_lt8618TaskWork(
+				to_smi_connector(sdev->smi_conn_tab[0]),
+				logicalMode.x, logicalMode.y);
+
+			if (ret)
+				DRM_ERROR("LT8618 mode configuration failed: %d\n", ret);
 		}
 #endif			
 		
@@ -684,6 +689,7 @@ static void smi_crtc_atomic_enable(struct drm_crtc *crtc,
 
 	}
 
+
 	if (use_vblank)
 		drm_crtc_vblank_on(crtc);
 }
@@ -696,6 +702,7 @@ static void smi_crtc_atomic_disable(struct drm_crtc *crtc,
 #endif
 {
 	struct smi_device *sdev = crtc->dev->dev_private;
+
 	if (use_vblank)
 		drm_crtc_vblank_off(crtc);
 			
@@ -849,7 +856,7 @@ free_mem:
 	return NULL;
 }
 
-void smi_HdmiDpmsSetMode(struct smi_device *sdev, struct drm_encoder *encoder, hdmi_index hdmi_index)
+static void smi_HdmiDpmsSetMode(struct smi_device *sdev, struct drm_encoder *encoder, hdmi_index hdmi_index)
 {
 	struct drm_display_mode *mode;
 	logicalMode_t logicalMode;
@@ -860,7 +867,8 @@ void smi_HdmiDpmsSetMode(struct smi_device *sdev, struct drm_encoder *encoder, h
 	struct edid * hdmi_edid= NULL;
 
 	monitor_status = hw770_hdmi_detect(hdmi_index);
-	if((monitor_status & 0x01) && !(monitor_status & 0x02)){
+	if ((monitor_status & SM770_HDMI_STATUS_HPD) &&
+	    !(monitor_status & SM770_HDMI_STATUS_RXSENSE)) {
 		crtc = encoder->crtc;
 		mode = &crtc->state->adjusted_mode;
 
@@ -896,7 +904,7 @@ void smi_HdmiDpmsSetMode(struct smi_device *sdev, struct drm_encoder *encoder, h
 		logicalMode.bpp = smi_bpp;
 		logicalMode.hz = refresh_rate;
 		logicalMode.pitch = 0;
-		logicalMode.dispCtrl = hdmi_index;
+		logicalMode.dispCtrl = (disp_control_t)hdmi_index;
 
 		ret = hw770_set_hdmi_mode(&logicalMode, *mode, true, hdmi_index);
 		if (ret != 0)
@@ -1025,7 +1033,8 @@ static void smi_encoder_dpms(struct drm_encoder *encoder, int mode)
 			ddk770_swPanelPowerSequence(index, 1, index, 4);
 			if(sdev->is_hdmi[index]){
 				hdmi_ConnectStatus = ddk770_HDMI_HPD_Detect(index);
-				if((hdmi_ConnectStatus & 0x01) && !(hdmi_ConnectStatus & 0x02)){
+				if ((hdmi_ConnectStatus & SM770_HDMI_STATUS_HPD) &&
+				    !(hdmi_ConnectStatus & SM770_HDMI_STATUS_RXSENSE)) {
 					dbg_msg("dpms reset hdmi%d mode \n", index);
 					smi_HdmiDpmsSetMode(sdev, encoder, index);
 				}
@@ -1600,10 +1609,7 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 					return connector_status_disconnected;
 			}
 
-			if (hwi2c_en)
-                ret = ddk768_edidHeaderReadMonitorExHwI2C(0);
-            else
-				ret = drm_probe_ddc(&smi_connector->adapter);
+			ret = drm_probe_ddc(&smi_connector->adapter);
 
 			if (ret)
 			{
@@ -1629,10 +1635,7 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 					return connector_status_disconnected;
 			}
 
-			if (hwi2c_en)
-			    ret = ddk768_edidHeaderReadMonitorExHwI2C(1);
-			else
-				ret = drm_probe_ddc(&smi_connector->adapter);	
+			ret = drm_probe_ddc(&smi_connector->adapter);
 
 			if (ret)
 			{
@@ -1789,7 +1792,7 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 				return connector_status_disconnected;
 			}
 
-			if(ddk770_HDMI_HPD_Detect(0))
+			if (ddk770_HDMI_HPD_Detect(0) & SM770_HDMI_STATUS_HPD)
 			{
 			    dbg_msg("detect HDMI0 connected \n");
 				//hw770_hdmi_vga_mode(0);
@@ -1817,7 +1820,7 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 				return connector_status_disconnected;
 			}
 
-			if(ddk770_HDMI_HPD_Detect(1))
+			if (ddk770_HDMI_HPD_Detect(1) & SM770_HDMI_STATUS_HPD)
 			{
 			    dbg_msg("detect HDMI1 connected \n");
 				//hw770_hdmi_vga_mode(1);
@@ -1845,7 +1848,7 @@ static enum drm_connector_status smi_connector_detect(struct drm_connector
 				return connector_status_disconnected;
 			}
 
-			if(ddk770_HDMI_HPD_Detect(2))
+			if (ddk770_HDMI_HPD_Detect(2) & SM770_HDMI_STATUS_HPD)
 			{
 			    dbg_msg("detect HDMI2 connected \n");
 				//hw770_hdmi_vga_mode(2);
@@ -1936,8 +1939,8 @@ static struct drm_connector *smi_connector_init(struct drm_device *dev, int inde
 	smi_connector->i2c_hw_enabled = false;
 
 	if (sdev->specId == SPC_SM750 || sdev->specId == SPC_SM768) {
-	switch (index)
-	{
+		switch (index)
+		{
 		case 0:
 			drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_DVII);
 			break;
@@ -1949,47 +1952,47 @@ static struct drm_connector *smi_connector_init(struct drm_device *dev, int inde
 			break;
 		default:
 			dbg_msg("error index of Connector\n");
-	}
+		}
 	}else if(sdev->specId == SPC_SM770){
 		u32 dw_version = 0;
 		switch (index)
 		{
-			case 0:
-				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_DisplayPort);
-				break;
-			case 1:
-				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_eDP);
-				break;
-			case 2:
-				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_HDMIA);
+		case 0:
+			drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_DisplayPort);
+			break;
+		case 1:
+			drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_eDP);
+			break;
+		case 2:
+			drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_HDMIA);
 			dw_version = (ddk770_HDMI_Read_Register(INDEX_HDMI0, HDMI_DESIGN_ID) << 8) | (ddk770_HDMI_Read_Register(INDEX_HDMI0, HDMI_REVISION_ID) << 0);
-				break;
-			case 3:
-				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_HDMIB);
+			break;
+		case 3:
+			drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_HDMIB);
 			dw_version = (ddk770_HDMI_Read_Register(INDEX_HDMI1, HDMI_DESIGN_ID) << 8) | (ddk770_HDMI_Read_Register(INDEX_HDMI1, HDMI_REVISION_ID) << 0);
-				break;
-			case 4:
-				drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_DVID);
+			break;
+		case 4:
+			drm_connector_init(dev, connector, &smi_vga_connector_funcs, DRM_MODE_CONNECTOR_DVID);
 			dw_version = (ddk770_HDMI_Read_Register(INDEX_HDMI2, HDMI_DESIGN_ID) << 8) | (ddk770_HDMI_Read_Register(INDEX_HDMI2, HDMI_REVISION_ID) << 0);
-				break;
-			default:
-				dbg_msg("error index of Connector\n");
+			break;
+		default:
+			dbg_msg("error index of Connector\n");
 		}
 		if (dw_version >= 0x200a)
 		{
 			connector->ycbcr_420_allowed = true;
-	}
+		}
 	}
 
-	if (sdev->specId == SPC_SM750) 
+	if (sdev->specId == SPC_SM750)
 	{
 		hw750_AdaptI2CInit(smi_connector);
 	}
-	else if(sdev->specId == SPC_SM768)
+	else if (sdev->specId == SPC_SM768)
 	{
 		hw768_AdaptI2CInit(smi_connector);
 	}
-	else if(sdev->specId == SPC_SM770)
+	else if (sdev->specId == SPC_SM770)
 	{
 		hw770_AdaptI2CInit(smi_connector);
 	}
@@ -1997,15 +2000,14 @@ static struct drm_connector *smi_connector_init(struct drm_device *dev, int inde
 	drm_connector_helper_add(connector, &smi_vga_connector_helper_funcs);
 
 	if (sdev->specId == SPC_SM770)
-		connector->polled = DRM_CONNECTOR_POLL_CONNECT | DRM_CONNECTOR_POLL_DISCONNECT | DRM_CONNECTOR_POLL_HPD;	
+		connector->polled = DRM_CONNECTOR_POLL_CONNECT | DRM_CONNECTOR_POLL_DISCONNECT | DRM_CONNECTOR_POLL_HPD;
 	else
 		connector->polled = DRM_CONNECTOR_POLL_CONNECT | DRM_CONNECTOR_POLL_DISCONNECT;
 
 	drm_connector_register(connector);
-	
+
 	return connector;
 }
-
 
 int smi_modeset_init(struct smi_device *cdev)
 {
@@ -2085,9 +2087,8 @@ int smi_modeset_init(struct smi_device *cdev)
 
 	drm_mode_config_reset(cdev->dev);
 
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 8, 0)
-		if ((cdev->specId == SPC_SM750 && (cdev->dev->pdev->resource[PCI_ROM_RESOURCE].flags & IORESOURCE_ROM_SHADOW)) || cdev->specId == SPC_SM768 || cdev->specId == SPC_SM770) {
+	if ((cdev->specId == SPC_SM750 && (cdev->dev->pdev->resource[PCI_ROM_RESOURCE].flags & IORESOURCE_ROM_SHADOW)) || cdev->specId == SPC_SM768 || cdev->specId == SPC_SM770) {
 		int ret = 0;
 		ret = drm_fbdev_generic_setup(cdev->dev, cdev->dev->mode_config.preferred_depth);
 		if (ret) {
@@ -2108,5 +2109,3 @@ void smi_modeset_fini(struct smi_device *cdev)
 		cdev->mode_info.mode_config_initialized = false;
 	}
 }
-
-
